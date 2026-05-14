@@ -4,7 +4,9 @@ from functools import wraps
 import uuid
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = 'gjpp-secret-key-2024'
+
+import os
+app.secret_key = os.environ.get('SECRET_KEY', 'gjpp-secret-key-2024')
 
 # ─────────────────────────────────────────
 #  SEED DATA  (replace with DB in prod)

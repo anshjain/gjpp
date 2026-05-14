@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Events - GJPP{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <h1>Events & Activities</h1>
+        <p>Festivals, camps, workshops, and Bhawna Yog sessions — stay connected with the global Jain community.</p>
+    </div>
+</div>
+<div class="container section">
+    {% set u = current_user() %}
+    {% if u and u.role != 'admin' %}
+    <div style="background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));border-radius:14px;padding:1.25rem 1.75rem;margin-bottom:2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);margin-bottom:0.2rem;">Showing events for your location</div>
+        <div style="font-size:1.05rem;font-weight:800;color:#fff;">{{ region_label(u.region) }} · {{ u.city }}, {{ u.country }}</div>
+      </div>
+      <a href="/request-location-update" style="font-size:0.8rem;font-weight:700;color:var(--jain-yellow);text-decoration:none;background:rgba(255,255,255,0.08);padding:0.4rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);">📍 Change Location</a>
+    </div>
+    {% endif %}
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;">
+        {% for event in events %}
+        <div class="card" style="padding:2rem;">
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+                <div>
+                    <div style="font-size:0.75rem;font-weight:700;color:var(--blue);letter-spacing:0.08em;text-transform:uppercase;">{{ event.type }}</div>
+                    <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:600;">{{ event.title }}</h2>
+                </div>
+            </div>
+            <div style="display:flex;gap:1.5rem;margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted);">
+                <span>📅 {{ event.date }}</span>
+                <span>📍 {{ event.region }}</span>
+            </div>
+            <p style="color:var(--text-muted);line-height:1.6;margin-bottom:1.5rem;">{{ event.description }}</p>
+            <a href="/events/{{ event.id }}/register" class="btn btn-primary">Register for this Event →</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

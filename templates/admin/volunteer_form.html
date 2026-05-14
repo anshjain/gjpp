@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if action=='edit' else 'Add' }} Volunteer - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.content{padding:2.5rem;background:var(--bg);display:flex;justify-content:center;align-items:flex-start;}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;width:100%;max-width:700px;box-shadow:var(--shadow-lg);}
+.form-card-header{padding:2rem 2.5rem;background:linear-gradient(135deg,#B8940F,#8a6c09);position:relative;overflow:hidden;}
+.form-card-header::before{content:'🤝';position:absolute;right:2rem;top:50%;transform:translateY(-50%);font-size:5rem;opacity:0.15;}
+.form-card-header h2{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:#fff;}
+.form-card-header p{color:rgba(255,255,255,0.6);font-size:0.875rem;margin-top:0.3rem;}
+.form-body{padding:2.5rem;}
+.form-section-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);margin:1.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--jain-yellow);}
+.form-section-title:first-child{margin-top:0;}
+.skill-checkboxes{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;}
+.skill-check-item{display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.75rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all 0.18s;background:var(--bg);}
+.skill-check-item input[type="checkbox"]{accent-color:var(--jain-yellow);width:16px;height:16px;flex-shrink:0;}
+.skill-check-item:has(input:checked){border-color:var(--jain-yellow);background:var(--yellow-light);color:var(--yellow-dark);}
+</style>
+{% endblock %}
+{% block content %}
+<div style="padding:2rem 2.5rem;"><div class="form-card">
+      <div class="form-card-header">
+        <h2>{{ '✏️ Edit Volunteer' if action=='edit' else '➕ Add New Volunteer' }}</h2>
+        <p>{{ 'Update volunteer details and skills.' if action=='edit' else 'Register a new volunteer in the GJPP system.' }}</p>
+      </div>
+      <div class="form-body">
+        <form method="POST">
+          <div class="form-section-title">Personal Information</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name <span>*</span></label>
+              <input type="text" name="name" class="form-input" required placeholder="Full name" value="{{ volunteer.name if volunteer else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">WhatsApp Number</label>
+              <input type="tel" name="whatsapp" class="form-input" placeholder="+1 555 000 0000" value="{{ volunteer.whatsapp if volunteer else '' }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address <span>*</span></label>
+            <input type="email" name="email" class="form-input" required placeholder="volunteer@example.com" value="{{ volunteer.email if volunteer else '' }}">
+          </div>
+
+          <div class="form-section-title">Location</div>
+          <div class="form-group">
+            <label class="form-label">Region <span>*</span></label>
+            <select name="region" class="form-select" required>
+              <option value="">Select region…</option>
+              {% for r in regions %}
+              <option value="{{ r.id }}" {% if volunteer and volunteer.region==r.id %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Country <span>*</span></label>
+              <input type="text" name="country" class="form-input" required placeholder="e.g. United States" value="{{ volunteer.country if volunteer else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" name="city" class="form-input" placeholder="e.g. New York" value="{{ volunteer.city if volunteer else '' }}">
+            </div>
+          </div>
+
+          <div class="form-section-title">Skills & Availability</div>
+          <div class="form-group">
+            <label class="form-label">Skills (select all that apply)</label>
+            <div class="skill-checkboxes">
+              {% for sk in all_skills %}
+              <label class="skill-check-item">
+                <input type="checkbox" name="skills" value="{{ sk }}" {% if volunteer and sk in volunteer.skills %}checked{% endif %}>
+                {{ sk }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Availability</label>
+              <select name="availability" class="form-select">
+                {% for a in ['Weekends only','Weekdays only','Both weekdays and weekends','Flexible'] %}
+                <option value="{{ a }}" {% if volunteer and volunteer.availability==a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select">
+                <option value="active"   {% if not volunteer or volunteer.status=='active'   %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if volunteer and volunteer.status=='inactive' %}selected{% endif %}>Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+            <button type="submit" class="btn btn-yellow btn-lg" style="flex:1;justify-content:center;">
+              {{ '✅ Save Changes' if action=='edit' else '➕ Add Volunteer' }}
+            </button>
+            <a href="/admin/volunteers" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

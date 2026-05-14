@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Promotions - Teacher GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:2rem 2.5rem;}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}
+.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.sc-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);}
+.promo-row{display:flex;align-items:center;gap:1rem;padding:1rem 1.5rem;border-bottom:1px solid var(--border);}
+.promo-row:last-child{border-bottom:none;}
+.promo-av{width:36px;height:36px;border-radius:50%;background:var(--jain-green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:800;flex-shrink:0;}
+.level-arrow{display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;}
+.lvl-chip{padding:0.18rem 0.55rem;border-radius:6px;font-size:0.75rem;font-weight:800;}
+.chip-old{background:var(--red-light);color:var(--red-dark);}
+.chip-new{background:var(--green-light);color:var(--green-dark);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-title">Promotion History</div>
+  <div class="pg-sub">Students you have promoted to the next level</div>
+
+  <div class="sc">
+    <div class="sc-head">
+      <h3>{{ promotions|length }} Promotion{{ 's' if promotions|length != 1 }}</h3>
+      <a href="/teacher/students" class="btn btn-green" style="font-size:0.8rem;padding:0.4rem 0.9rem;">View Students →</a>
+    </div>
+    {% if promotions %}
+    {% for p in promotions|sort(attribute='promoted_at', reverse=True) %}
+    <div class="promo-row">
+      <div class="promo-av">{{ p.student_name[0] }}</div>
+      <div style="flex:1;">
+        <div style="font-weight:700;color:var(--jain-blue);">{{ p.student_name }}</div>
+        <div class="level-arrow">
+          <span class="lvl-chip chip-old">{{ p.old_level }}</span>
+          <span style="color:var(--jain-green);font-weight:800;">→</span>
+          <span class="lvl-chip chip-new">{{ p.new_level }}</span>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:800;color:var(--jain-green);">{{ p.exam_score }}%</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);">Exam Score</div>
+      </div>
+      <div style="text-align:right;font-size:0.78rem;color:var(--text-muted);">{{ p.promoted_at }}</div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align:center;padding:3.5rem 2rem;">
+      <div style="font-size:2.5rem;margin-bottom:0.75rem;">⬆️</div>
+      <div style="font-weight:700;color:var(--jain-blue);margin-bottom:0.4rem;">No promotions yet</div>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:1.25rem;">Promote students after they pass their exam.</p>
+      <a href="/teacher/students" class="btn btn-green">Go to My Students →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

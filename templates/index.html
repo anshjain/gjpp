@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+{% block title %}GJPP - Global Jain Education Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+.hero {
+    background: linear-gradient(135deg, #0D2B6E 0%, #081D50 60%, #0A2258 100%);
+    min-height: 92vh;
+    display: flex; align-items: center;
+    position: relative; overflow: hidden;
+}
+.hero-dots {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 36px 36px;
+}
+.hero-glow-r {
+    position: absolute; width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(245,197,24,0.08) 0%, transparent 65%);
+    right: -100px; top: 50%; transform: translateY(-50%); pointer-events: none;
+}
+.hero-glow-l {
+    position: absolute; width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(200,16,46,0.1) 0%, transparent 65%);
+    left: -80px; bottom: -80px; pointer-events: none;
+}
+.hero-inner {
+    max-width: 1300px; margin: 0 auto; padding: 0 2rem;
+    display: grid; grid-template-columns: 1fr 1.05fr;
+    gap: 4rem; align-items: center;
+    position: relative; z-index: 1;
+}
+.hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(245,197,24,0.12);
+    border: 1px solid rgba(245,197,24,0.3);
+    color: #F5C518; padding: 0.38rem 0.9rem; border-radius: 100px;
+    font-size: 0.76rem; font-weight: 800; letter-spacing: 0.09em;
+    text-transform: uppercase; margin-bottom: 1.5rem;
+}
+.hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 4rem; font-weight: 800; line-height: 1.08;
+    color: #fff; margin-bottom: 1.5rem;
+}
+.hero h1 em { font-style: italic; color: #F5C518; display: block; }
+.hero-desc { color: rgba(255,255,255,0.62); font-size: 1.05rem; line-height: 1.72; margin-bottom: 2.5rem; max-width: 460px; }
+.hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 3rem; }
+
+.hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+.stat-card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 1.1rem 1.25rem;
+}
+.stat-card .num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 800; color: #F5C518; line-height: 1; }
+.stat-card .lbl { color: rgba(255,255,255,0.42); font-size: 0.76rem; font-weight: 700; margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.globe-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+#globe-canvas { cursor: grab; filter: drop-shadow(0 0 50px rgba(245,197,24,0.18)) drop-shadow(0 0 25px rgba(13,43,110,0.5)); display: block; }
+#globe-canvas:active { cursor: grabbing; }
+.globe-hint { color: rgba(255,255,255,0.28); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin-top: 1rem; }
+#globe-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 0.75rem; }
+.globe-spinner { width: 36px; height: 36px; border: 3px solid rgba(245,197,24,0.15); border-top-color: #F5C518; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Regions */
+.regions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+.region-card {
+    background: #fff; border: 1.5px solid rgba(13,43,110,0.14);
+    border-radius: 14px; padding: 1.5rem 1.25rem;
+    text-decoration: none; color: #0D2B6E;
+    transition: all 0.22s; position: relative; overflow: hidden;
+}
+.region-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; transform: scaleX(0); transition: transform 0.22s; }
+.region-card.na::after  { background: var(--jain-blue); }
+.region-card.sa::after  { background: var(--jain-green); }
+.region-card.uk::after  { background: var(--jain-red); }
+.region-card.eu::after  { background: var(--jain-yellow); }
+.region-card.in::after  { background: var(--jain-red); }
+.region-card.au::after  { background: var(--jain-green); }
+.region-card:hover { border-color: var(--jain-blue); transform: translateY(-4px); box-shadow: 0 10px 32px rgba(13,43,110,0.14); }
+.region-card:hover::after { transform: scaleX(1); }
+.region-flag { font-size: 2rem; margin-bottom: 0.65rem; }
+.region-name { font-weight: 800; font-size: 0.92rem; color: #0D2B6E; }
+.region-sub  { font-size: 0.76rem; color: #7A90C0; margin-top: 0.2rem; }
+
+/* Levels dark */
+.level-row { display: flex; align-items: center; gap: 1.25rem; padding: 1.1rem 1.4rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; text-decoration: none; color: #fff; transition: all 0.2s; margin-bottom: 0.75rem; }
+.level-row:hover { background: rgba(255,255,255,0.09); border-color: rgba(245,197,24,0.3); transform: translateX(5px); }
+.level-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.level-info { flex: 1; }
+.level-info strong { display: block; font-size: 0.95rem; }
+.level-info span   { font-size: 0.8rem; color: rgba(255,255,255,0.4); }
+.level-age { font-size: 0.76rem; font-weight: 700; background: rgba(255,255,255,0.08); padding: 0.25rem 0.65rem; border-radius: 6px; color: rgba(255,255,255,0.45); }
+
+/* Events */
+.events-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+.event-card { background: #fff; border: 1.5px solid rgba(13,43,110,0.14); border-radius: 14px; padding: 1.6rem; transition: all 0.22s; border-top: 4px solid; }
+.event-card:nth-child(1) { border-top-color: var(--jain-red); }
+.event-card:nth-child(2) { border-top-color: var(--jain-yellow); }
+.event-card:nth-child(3) { border-top-color: var(--jain-green); }
+.event-card:hover { box-shadow: 0 8px 28px rgba(13,43,110,0.12); transform: translateY(-3px); }
+.event-type  { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--jain-red); margin-bottom: 0.45rem; }
+.event-title { font-family: 'Playfair Display', serif; font-size: 1.25rem; font-weight: 700; color: #0D2B6E; margin-bottom: 0.4rem; }
+.event-date  { font-size: 0.82rem; color: #7A90C0; margin-bottom: 0.75rem; }
+.event-desc  { font-size: 0.875rem; color: #7A90C0; line-height: 1.55; }
+
+/* Features */
+.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.feature-card { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 2rem; position: relative; overflow: hidden; }
+.feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+.feature-card.blue::before   { background: var(--jain-blue); }
+.feature-card.red::before    { background: var(--jain-red); }
+.feature-card.yellow::before { background: var(--jain-yellow); }
+.feature-card.white::before  { background: var(--border); }
+.feature-card.green::before  { background: var(--jain-green); }
+.feature-icon { font-size: 2.4rem; margin-bottom: 1rem; }
+.feature-card h3 { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--jain-blue); }
+.feature-card p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+
+@media (max-width: 960px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2.6rem; }
+    #globe-canvas { width: 320px !important; height: 320px !important; }
+    .regions-grid { grid-template-columns: repeat(2, 1fr); }
+    .events-grid  { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-dots"></div>
+    <div class="hero-glow-r"></div>
+    <div class="hero-glow-l"></div>
+    <div class="hero-inner">
+        <div>
+            <div class="hero-eyebrow">✦ Jai Jinendra — Global Jain Learning</div>
+            <h1>Jain Education,<em>Everywhere on Earth</em></h1>
+            <p class="hero-desc">GJPP connects Jain families across 6 continents through structured, level-based education for ages 3 to 99. Online classes, local Pathshalas, and a global community — all in one place.</p>
+            <div class="hero-actions">
+                <a href="/register/student" class="btn btn-yellow btn-lg">Enroll a Student →</a>
+                <a href="/classes" class="btn btn-outline-white btn-lg">View Classes</a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-card"><div class="num" id="stat-students">1,247</div><div class="lbl">Students Enrolled</div></div>
+                <div class="stat-card"><div class="num">6</div><div class="lbl">Global Regions</div></div>
+                <div class="stat-card"><div class="num" id="stat-pathshalas">42</div><div class="lbl">Active Pathshalas</div></div>
+                <div class="stat-card"><div class="num" id="stat-volunteers">186</div><div class="lbl">Volunteers Worldwide</div></div>
+            </div>
+        </div>
+
+        <div class="globe-wrap">
+            <div style="position:relative;width:520px;height:520px;">
+                <div id="globe-loading">
+                    <div class="globe-spinner"></div>
+                    <span style="color:rgba(245,197,24,0.5);font-size:0.76rem;letter-spacing:0.06em;text-transform:uppercase;">Loading globe…</span>
+                </div>
+                <canvas id="globe-canvas" width="520" height="520" style="opacity:0;transition:opacity 0.6s;"></canvas>
+            </div>
+            <p class="globe-hint">Drag to rotate · Click a pin to explore</p>
+        </div>
+    </div>
+</section>
+
+<!-- JAIN COLOR STRIP -->
+<div style="display:flex;height:8px;">
+    <div style="flex:1;background:var(--jain-blue);"></div>
+    <div style="flex:1;background:var(--jain-red);"></div>
+    <div style="flex:1;background:var(--jain-yellow);"></div>
+    <div style="flex:1;background:var(--jain-white);border:1px solid var(--border);"></div>
+    <div style="flex:1;background:var(--jain-green);"></div>
+</div>
+
+<!-- REGIONS -->
+<section class="section container">
+    <div style="text-align:center;margin-bottom:3rem;">
+        <div class="section-label">Our Reach</div>
+        <h2 class="section-title">Find Your Region</h2>
+        <p class="section-subtitle" style="margin:0 auto;">Each region has localized schedules, timezone-aware class times, and a community of Jain families near you.</p>
+    </div>
+    <div class="regions-grid">
+        {% set region_classes = ['na','sa','uk','eu','in','au'] %}
+        {% for region in regions %}
+        <a href="/region/{{ region.id }}" class="region-card {{ region_classes[loop.index0] }}">
+            <div class="region-flag">{{ region.flag }}</div>
+            <div class="region-name">{{ region.name }}</div>
+            <div class="region-sub">{{ region.timezone }}</div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section style="background:var(--blue-light);padding:5rem 0;">
+    <div class="container">
+        <div style="text-align:center;margin-bottom:3rem;">
+            <div class="section-label">Why GJPP</div>
+            <h2 class="section-title">Built for Global Jain Families</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card blue">
+                <div class="feature-icon">🌍</div>
+                <h3>Global-First Design</h3>
+                <p>Classes available across 6 regions with automatic timezone detection and local scheduling.</p>
+            </div>
+            <div class="feature-card red">
+                <div class="feature-icon">📱</div>
+                <h3>WhatsApp Native</h3>
+                <p>All communications — reminders, festival greetings, announcements — delivered via WhatsApp.</p>
+            </div>
+            <div class="feature-card yellow">
+                <div class="feature-icon">📚</div>
+                <h3>Structured Curriculum</h3>
+                <p>5 levels from Beginner (age 3) to Adult Track — each with clear objectives and progression.</p>
+            </div>
+            <div class="feature-card green">
+                <div class="feature-icon">🤝</div>
+                <h3>Volunteer-Driven</h3>
+                <p>Run entirely by dedicated Jain volunteers who give their time out of love for dharma.</p>
+            </div>
+            <div class="feature-card red">
+                <div class="feature-icon">🏫</div>
+                <h3>Online &amp; In-Person</h3>
+                <p>Find a Pathshala near you or join classes online from anywhere in the world.</p>
+            </div>
+            <div class="feature-card blue">
+                <div class="feature-icon">🎓</div>
+                <h3>Certificates &amp; Recognition</h3>
+                <p>Auto-generated certificates on course completion delivered by email and dashboard download.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- LEVELS -->
+<section style="background:linear-gradient(135deg,var(--jain-blue) 0%,var(--blue-mid) 100%);padding:5rem 0;">
+    <div class="container" style="display:grid;grid-template-columns:1fr 1.3fr;gap:5rem;align-items:center;">
+        <div>
+            <div class="section-label" style="color:var(--jain-yellow);">Curriculum</div>
+            <h2 class="section-title" style="color:#fff;">Learning Levels for Every Age</h2>
+            <p style="color:rgba(255,255,255,0.5);line-height:1.7;margin-bottom:2rem;">From 3-year-olds discovering the Navkar Mantra to adults deepening their understanding of Agam scriptures.</p>
+            <a href="/classes" class="btn btn-yellow">Explore All Classes →</a>
+        </div>
+        <div>
+            {% for level in [
+                {"id":"beginner","name":"Beginner","age":"Ages 3–6","desc":"Stories, prayers & Jain values","color":"#F5C518"},
+                {"id":"level1","name":"Level 1","age":"Ages 6–8","desc":"Navkar Mantra & Jain symbols","color":"#1A7A3C"},
+                {"id":"level2","name":"Level 2","age":"Ages 8–12","desc":"Tirthankars & history","color":"#C8102E"},
+                {"id":"level3","name":"Level 3+","age":"Ages 12+","desc":"Advanced Agam study & ethics","color":"#4A80F0"},
+                {"id":"adult","name":"Adult Track","age":"Ages 18+","desc":"Philosophy & spiritual practice","color":"#FFFFFF"},
+            ] %}
+            <a href="/classes#{{ level.id }}" class="level-row">
+                <div class="level-dot" style="background:{{ level.color }};box-shadow:0 0 8px {{ level.color }};"></div>
+                <div class="level-info"><strong>{{ level.name }}</strong><span>{{ level.desc }}</span></div>
+                <div class="level-age">{{ level.age }}</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- EVENTS -->
+<section class="section container">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:3rem;flex-wrap:wrap;gap:1rem;">
+        <div>
+            <div class="section-label">Community</div>
+            <h2 class="section-title">Upcoming Events</h2>
+        </div>
+        <a href="/events" class="btn btn-outline-blue">View All Events</a>
+    </div>
+    <div class="events-grid">
+        {% for event in events %}
+        <div class="event-card">
+            <div class="event-type">{{ event.type }} · {{ event.region }}</div>
+            <div class="event-title">{{ event.title }}</div>
+            <div class="event-date">📅 {{ event.date }}</div>
+            <p class="event-desc">{{ event.description }}</p>
+            <div style="margin-top:1.25rem;">
+                <a href="/events/{{ event.id }}/register" class="btn btn-red" style="font-size:0.82rem;padding:0.5rem 1rem;">Register →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="container" style="padding-bottom:2.5rem;padding-top:0;">
+    <div class="cta-strip">
+        <h2>Ready to Begin the Journey?</h2>
+        <p>Join thousands of Jain families worldwide in preserving our dharma, culture, and values for the next generation.</p>
+        <div class="cta-strip-actions">
+            <a href="/register/student" class="btn btn-yellow btn-lg">Enroll a Student →</a>
+            <a href="/register/volunteer" class="btn btn-outline-white btn-lg">Volunteer with Us</a>
+        </div>
+    </div>
+</section>
+
+<!-- D3 Globe -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+(function() {
+    const canvas = document.getElementById('globe-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height, R = 238;
+    const cx = W/2, cy = H/2;
+
+    const projection = d3.geoOrthographic().scale(R).translate([cx, cy]).clipAngle(90).rotate([20, -20]);
+    const pathGen = d3.geoPath(projection, ctx);
+    const graticule = d3.geoGraticule10();
+    const sphere = { type: 'Sphere' };
+
+    const REGIONS = [
+        { url:'/region/north_america', name:'N. America', lon:-100, lat:40,  color:'#0D2B6E', size:'sm' },
+        { url:'/region/south_america', name:'S. America', lon:-58,  lat:-15, color:'#1A7A3C', size:'sm' },
+        { url:'/region/uk',            name:'UK',         lon:-2,   lat:54,  color:'#C8102E', size:'sm' },
+        { url:'/region/europe',        name:'Europe',     lon:14,   lat:49,  color:'#C8102E', size:'sm' },
+        { url:'/region/india',         name:'India',      lon:79,   lat:22,  color:'#0D2B6E', size:'lg' },
+        { url:'/region/australia',     name:'Australia',  lon:134,  lat:-25, color:'#1A7A3C', size:'sm' },
+    ];
+
+    let rotate = [20, -20], dragging = false, lastMX, lastMY;
+    let autoSpin = true, land = null, borders = null;
+
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+        .then(r => r.json())
+        .then(w => {
+            land    = topojson.feature(w, w.objects.land);
+            borders = topojson.mesh(w, w.objects.countries, (a,b) => a !== b);
+            document.getElementById('globe-loading').style.display = 'none';
+            canvas.style.opacity = '1';
+            tick();
+        })
+        .catch(() => {
+            document.getElementById('globe-loading').innerHTML =
+                '<span style="color:rgba(245,197,24,0.5);font-size:0.82rem;">Globe unavailable — check connection</span>';
+        });
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+        projection.rotate(rotate);
+
+        // Ocean
+        ctx.beginPath(); pathGen(sphere);
+        const og = ctx.createRadialGradient(cx-70, cy-70, 0, cx, cy, R);
+        og.addColorStop(0, '#1A4DB5'); og.addColorStop(0.55, '#0D2E7A'); og.addColorStop(1, '#060F2E');
+        ctx.fillStyle = og; ctx.fill();
+
+        if (!land) return;
+
+        // Graticule
+        ctx.beginPath(); pathGen(graticule);
+        ctx.strokeStyle = 'rgba(200,220,255,0.1)'; ctx.lineWidth = 0.5; ctx.stroke();
+
+        // Land — using Jain blue
+        ctx.beginPath(); pathGen(land);
+        const lg = ctx.createLinearGradient(cx-R, cy-R, cx+R, cy+R);
+        lg.addColorStop(0, '#3B6AE0'); lg.addColorStop(1, '#1A3A8A');
+        ctx.fillStyle = lg; ctx.fill();
+
+        // Borders
+        ctx.beginPath(); pathGen(borders);
+        ctx.strokeStyle = 'rgba(200,230,255,0.25)'; ctx.lineWidth = 0.5; ctx.stroke();
+
+        // Specular
+        ctx.beginPath(); pathGen(sphere);
+        const sg = ctx.createRadialGradient(cx-90, cy-90, 0, cx-40, cy-40, R*0.72);
+        sg.addColorStop(0, 'rgba(255,255,255,0.13)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = sg; ctx.fill();
+
+        // Atmosphere rim — yellow glow
+        ctx.beginPath(); pathGen(sphere);
+        ctx.strokeStyle = 'rgba(245,197,24,0.3)'; ctx.lineWidth = 2.5; ctx.stroke();
+
+        REGIONS.forEach(reg => drawPin(reg));
+    }
+
+    function drawPin(reg) {
+        if (!checkVisible(reg.lon, reg.lat)) return;
+        const p = projection([reg.lon, reg.lat]);
+        if (!p) return;
+        const big = reg.size === 'lg';
+        const pr = big ? 11 : 8, stem = big ? 22 : 16;
+        const headY = p[1] - stem - pr;
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,20,0.6)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+
+        // Stem
+        ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0], headY + pr);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = big ? 2.5 : 2; ctx.lineCap = 'round'; ctx.stroke();
+
+        // Head
+        ctx.beginPath(); ctx.arc(p[0], headY, pr, 0, Math.PI*2);
+        ctx.fillStyle = reg.color; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = big ? 2.5 : 1.8; ctx.stroke();
+
+        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+        // Inner dot
+        ctx.beginPath(); ctx.arc(p[0], headY, pr*0.36, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+        ctx.restore();
+
+        // Label
+        ctx.font = `${big?700:600} ${big?10.5:9.5}px Nunito, system-ui, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const tw = ctx.measureText(reg.name).width, bw = tw+14, bh = big?17:15;
+        const bx = p[0]-bw/2, by = headY-pr-bh-3;
+        ctx.save();
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 7); else ctx.rect(bx, by, bw, bh);
+        ctx.fillStyle = 'rgba(8,29,80,0.9)'; ctx.fill();
+        ctx.fillStyle = '#F5C518'; ctx.fillText(reg.name, p[0], by+bh/2);
+        ctx.restore();
+    }
+
+    function checkVisible(lon, lat) {
+        const lonRad = (lon+rotate[0])*Math.PI/180;
+        const latRad = lat*Math.PI/180, latRot = -rotate[1]*Math.PI/180;
+        return Math.cos(latRot)*Math.cos(latRad)*Math.cos(lonRad) + Math.sin(latRot)*Math.sin(latRad) > 0.04;
+    }
+
+    function tick() { if (autoSpin) rotate[0] += 0.15; draw(); requestAnimationFrame(tick); }
+
+    canvas.addEventListener('mousedown', e => { dragging=true; autoSpin=false; lastMX=e.clientX; lastMY=e.clientY; });
+    window.addEventListener('mousemove', e => { if (!dragging) return; rotate[0]+=(e.clientX-lastMX)*0.38; rotate[1]=Math.max(-80,Math.min(80,rotate[1]-(e.clientY-lastMY)*0.38)); lastMX=e.clientX; lastMY=e.clientY; });
+    window.addEventListener('mouseup', () => dragging=false);
+    canvas.addEventListener('touchstart', e => { autoSpin=false; lastMX=e.touches[0].clientX; lastMY=e.touches[0].clientY; },{passive:true});
+    canvas.addEventListener('touchmove', e => { rotate[0]+=(e.touches[0].clientX-lastMX)*0.38; rotate[1]=Math.max(-80,Math.min(80,rotate[1]-(e.touches[0].clientY-lastMY)*0.38)); lastMX=e.touches[0].clientX; lastMY=e.touches[0].clientY; },{passive:true});
+
+    canvas.addEventListener('click', e => {
+        const rect=canvas.getBoundingClientRect();
+        const mx=(e.clientX-rect.left)*(W/rect.width), my=(e.clientY-rect.top)*(H/rect.height);
+        for (const reg of REGIONS) {
+            if (!checkVisible(reg.lon, reg.lat)) continue;
+            const p=projection([reg.lon,reg.lat]); if (!p) continue;
+            const big=reg.size==='lg', pr=big?11:8, headY=p[1]-(big?22:16)-pr;
+            if (Math.hypot(mx-p[0], my-headY) < pr+4) { window.location.href=reg.url; return; }
+        }
+    });
+
+    async function loadStats() {
+        try { const r=await fetch('/api/stats'); const d=await r.json(); animateNum('stat-students',d.students); animateNum('stat-pathshalas',d.pathshalas); animateNum('stat-volunteers',d.volunteers); } catch(e) {}
+    }
+    function animateNum(id,target) { const el=document.getElementById(id); if(!el) return; let cur=0; const step=Math.ceil(target/60); const t=setInterval(()=>{ cur=Math.min(cur+step,target); el.textContent=cur.toLocaleString(); if(cur>=target)clearInterval(t); },16); }
+    loadStats();
+})();
+</script>
+{% endblock %}

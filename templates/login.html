@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+{% block title %}Login - GJPP{% endblock %}
+
+{% block extra_css %}
+<style>
+.login-page {
+    min-height: calc(100vh - 68px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    background:
+        radial-gradient(ellipse at 20% 20%, rgba(13,43,110,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(26,122,60,0.06) 0%, transparent 50%),
+        var(--bg);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(13,43,110,0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+.login-wrap {
+    width: 100%;
+    max-width: 1040px;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Top: logo + title ── */
+.login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.login-header img {
+    height: 64px; width: 64px;
+    object-fit: contain;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 4px 12px rgba(13,43,110,0.2));
+}
+
+.login-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 800;
+    color: var(--jain-blue);
+    margin-bottom: 0.3rem;
+}
+
+.login-header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ── Role selector tabs ── */
+.role-tabs {
+    display: flex;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.role-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1.4rem 1rem;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    transition: all 0.22s;
+    position: relative;
+    border-right: 1px solid var(--border);
+}
+
+.role-tab:last-child { border-right: none; }
+
+.role-tab .tab-icon {
+    font-size: 1.75rem;
+    transition: transform 0.22s;
+}
+
+.role-tab:hover .tab-icon { transform: scale(1.12); }
+
+.role-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    transform: scaleX(0);
+    transition: transform 0.22s;
+    border-radius: 2px 2px 0 0;
+}
+
+/* Active states */
+.role-tab.active-admin  { background: var(--blue-light);  color: var(--jain-blue); }
+.role-tab.active-parent { background: var(--red-light);   color: var(--red-dark);  }
+.role-tab.active-teacher{ background: var(--green-light); color: var(--green-dark);}
+
+.role-tab.active-admin::after  { background: var(--jain-blue);  transform: scaleX(1); }
+.role-tab.active-parent::after { background: var(--jain-red);   transform: scaleX(1); }
+.role-tab.active-teacher::after{ background: var(--jain-green); transform: scaleX(1); }
+
+/* ── Login cards ── */
+.login-panels { position: relative; }
+
+.login-panel {
+    display: none;
+    animation: fadeUp 0.3s ease;
+}
+
+.login-panel.active { display: block; }
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-card {
+    background: var(--surface);
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Left decorative panel */
+.login-deco {
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-deco::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px,
+        transparent 1px, transparent 28px
+    );
+}
+
+.admin-deco  { background: linear-gradient(135deg, var(--jain-blue) 0%, var(--blue-mid) 100%); }
+.parent-deco { background: linear-gradient(135deg, var(--jain-red)  0%, var(--red-dark)  100%); }
+.teacher-deco{ background: linear-gradient(135deg, var(--jain-green) 0%, var(--green-dark) 100%); }
+
+.login-deco-content { position: relative; }
+
+.login-deco .deco-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    display: block;
+    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.2));
+}
+
+.login-deco h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 800;
+    color: var(--jain-white);
+    margin-bottom: 0.75rem;
+    line-height: 1.1;
+}
+
+.login-deco p {
+    color: rgba(255,255,255,0.65);
+    font-size: 0.9rem;
+    line-height: 1.65;
+    margin-bottom: 2rem;
+}
+
+.deco-bullets { list-style: none; }
+.deco-bullets li {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.85rem;
+    padding: 0.35rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 600;
+}
+
+.deco-bullets li::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    flex-shrink: 0;
+}
+
+/* Right form panel */
+.login-form-wrap {
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.login-form-wrap h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem; font-weight: 700;
+    color: var(--jain-blue);
+    margin-bottom: 0.3rem;
+}
+
+.login-form-wrap .form-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+}
+
+.login-divider {
+    text-align: center;
+    position: relative;
+    margin: 1.5rem 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.login-divider::before, .login-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%; width: calc(50% - 24px);
+    height: 1px;
+    background: var(--border);
+}
+
+.login-divider::before { left: 0; }
+.login-divider::after  { right: 0; }
+
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 2.8rem; }
+.toggle-pw {
+    position: absolute; right: 0.85rem; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    cursor: pointer; color: var(--text-muted);
+    font-size: 1.1rem; padding: 0; line-height: 1;
+    transition: color 0.18s;
+}
+.toggle-pw:hover { color: var(--jain-blue); }
+
+.forgot-link {
+    font-size: 0.8rem; color: var(--text-muted);
+    text-decoration: none; font-weight: 700;
+    transition: color 0.18s;
+    display: block; text-align: right;
+    margin-top: 0.4rem;
+}
+.forgot-link:hover { color: var(--jain-blue); }
+
+.login-footer-note {
+    text-align: center;
+    margin-top: 2.5rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.login-footer-note a { color: var(--jain-blue); font-weight: 700; text-decoration: none; }
+.login-footer-note a:hover { text-decoration: underline; }
+
+/* ── Yellow bar below role color ── */
+.yellow-accent-bar {
+    height: 4px;
+    background: linear-gradient(90deg, var(--jain-yellow), transparent);
+    border-radius: 0 0 0 4px;
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+}
+
+@media (max-width: 760px) {
+    .login-card { grid-template-columns: 1fr; }
+    .login-deco  { padding: 2rem; min-height: 180px; }
+    .login-form-wrap { padding: 2rem; }
+    .role-tab .tab-label { display: none; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-wrap">
+
+        <!-- Header -->
+        <div class="login-header">
+            <img src="/static/images/logo.png" alt="GJPP Logo">
+            <h1>Welcome Back</h1>
+            <p>Sign in to your GJPP account to access your dashboard</p>
+        </div>
+
+        <!-- Role Tabs -->
+        <div class="role-tabs" role="tablist">
+            <button class="role-tab active-admin" id="tab-admin" onclick="switchRole('admin')" role="tab" aria-selected="true">
+                <span class="tab-icon">🛡️</span>
+                <span class="tab-label">Admin</span>
+            </button>
+            <button class="role-tab" id="tab-parent" onclick="switchRole('parent')" role="tab" aria-selected="false">
+                <span class="tab-icon">👨‍👩‍👦</span>
+                <span class="tab-label">Parent</span>
+            </button>
+            <button class="role-tab" id="tab-teacher" onclick="switchRole('teacher')" role="tab" aria-selected="false">
+                <span class="tab-icon">📖</span>
+                <span class="tab-label">Teacher</span>
+            </button>
+        </div>
+
+        <!-- Panels -->
+        <div class="login-panels">
+
+            <!-- ── ADMIN ── -->
+            <div class="login-panel active" id="panel-admin">
+                <div class="login-card">
+                    <div class="login-deco admin-deco">
+                        <div class="yellow-accent-bar"></div>
+                        <div class="login-deco-content">
+                            <span class="deco-icon">🛡️</span>
+                            <h2>Admin Portal</h2>
+                            <p>Manage the entire GJPP platform — students, teachers, Pathshalas, events, and communications.</p>
+                            <ul class="deco-bullets">
+                                <li>Manage all students & enrollments</li>
+                                <li>Assign teachers to classes</li>
+                                <li>Oversee all regional Pathshalas</li>
+                                <li>Send WhatsApp announcements</li>
+                                <li>View platform analytics</li>
+                                <li>Manage certificates & exams</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="login-form-wrap">
+                        <h3>Admin Sign In</h3>
+                        <p class="form-sub">GJPP central management access</p>
+                        <form method="POST" action="/login/admin">
+                            <div class="form-group">
+                                <label class="form-label">Admin Email <span>*</span></label>
+                                <input type="email" name="email" class="form-input" placeholder="admin@gjpp.org" required autocomplete="username">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password <span>*</span></label>
+                                <div class="password-wrap">
+                                    <input type="password" name="password" id="pw-admin" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+                                    <button type="button" class="toggle-pw" onclick="togglePw('pw-admin', this)">👁️</button>
+                                </div>
+                                <a href="/forgot-password?role=admin" class="forgot-link">Forgot password?</a>
+                            </div>
+                            <div class="form-group">
+                                <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;color:var(--text-mid);cursor:pointer;font-weight:600;">
+                                    <input type="checkbox" name="remember" style="width:16px;height:16px;accent-color:var(--jain-blue);">
+                                    Keep me signed in for 30 days
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-blue btn-lg" style="width:100%;justify-content:center;">
+                                Sign In to Admin Portal →
+                            </button>
+                        </form>
+                        <div class="login-divider">or</div>
+                        <p style="text-align:center;font-size:0.82rem;color:var(--text-muted);">
+                            Need admin access? <a href="/enquiry" style="color:var(--jain-blue);font-weight:700;">Contact GJPP Central</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── PARENT ── -->
+            <div class="login-panel" id="panel-parent">
+                <div class="login-card">
+                    <div class="login-deco parent-deco">
+                        <div class="yellow-accent-bar"></div>
+                        <div class="login-deco-content">
+                            <span class="deco-icon">👨‍👩‍👦</span>
+                            <h2>Parent Portal</h2>
+                            <p>Track your child's learning journey, manage registrations, and stay connected with their Pathshala teacher.</p>
+                            <ul class="deco-bullets">
+                                <li>View your child's progress</li>
+                                <li>Enroll in new classes & events</li>
+                                <li>Download certificates</li>
+                                <li>Manage WhatsApp preferences</li>
+                                <li>View upcoming class schedules</li>
+                                <li>Send messages to teachers</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="login-form-wrap">
+                        <h3>Parent Sign In</h3>
+                        <p class="form-sub">Access your family's GJPP dashboard</p>
+                        <form method="POST" action="/login/parent">
+                            <div class="form-group">
+                                <label class="form-label">Email Address <span>*</span></label>
+                                <input type="email" name="email" class="form-input" placeholder="your@email.com" required autocomplete="username">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password <span>*</span></label>
+                                <div class="password-wrap">
+                                    <input type="password" name="password" id="pw-parent" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+                                    <button type="button" class="toggle-pw" onclick="togglePw('pw-parent', this)">👁️</button>
+                                </div>
+                                <a href="/forgot-password?role=parent" class="forgot-link">Forgot password?</a>
+                            </div>
+                            <div class="form-group">
+                                <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;color:var(--text-mid);cursor:pointer;font-weight:600;">
+                                    <input type="checkbox" name="remember" style="width:16px;height:16px;accent-color:var(--jain-red);">
+                                    Keep me signed in for 30 days
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-red btn-lg" style="width:100%;justify-content:center;">
+                                Sign In to Parent Portal →
+                            </button>
+                        </form>
+                        <div class="login-divider">new to GJPP?</div>
+                        <a href="/register/student" class="btn btn-outline-blue btn-lg" style="width:100%;justify-content:center;">
+                            Enroll Your Child →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TEACHER ── -->
+            <div class="login-panel" id="panel-teacher">
+                <div class="login-card">
+                    <div class="login-deco teacher-deco">
+                        <div class="yellow-accent-bar"></div>
+                        <div class="login-deco-content">
+                            <span class="deco-icon">📖</span>
+                            <h2>Teacher Portal</h2>
+                            <p>Manage your classes, track student attendance, upload curriculum materials, and communicate with parents.</p>
+                            <ul class="deco-bullets">
+                                <li>View your class roster</li>
+                                <li>Mark attendance &amp; progress</li>
+                                <li>Upload lesson materials</li>
+                                <li>Issue &amp; manage certificates</li>
+                                <li>Communicate with parents</li>
+                                <li>Log volunteer hours</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="login-form-wrap">
+                        <h3>Teacher Sign In</h3>
+                        <p class="form-sub">Access your teaching dashboard</p>
+                        <form method="POST" action="/login/teacher">
+                            <div class="form-group">
+                                <label class="form-label">Teacher Email <span>*</span></label>
+                                <input type="email" name="email" class="form-input" placeholder="teacher@gjpp.org" required autocomplete="username">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password <span>*</span></label>
+                                <div class="password-wrap">
+                                    <input type="password" name="password" id="pw-teacher" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+                                    <button type="button" class="toggle-pw" onclick="togglePw('pw-teacher', this)">👁️</button>
+                                </div>
+                                <a href="/forgot-password?role=teacher" class="forgot-link">Forgot password?</a>
+                            </div>
+                            <div class="form-group">
+                                <label style="display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;color:var(--text-mid);cursor:pointer;font-weight:600;">
+                                    <input type="checkbox" name="remember" style="width:16px;height:16px;accent-color:var(--jain-green);">
+                                    Keep me signed in for 30 days
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-green btn-lg" style="width:100%;justify-content:center;">
+                                Sign In to Teacher Portal →
+                            </button>
+                        </form>
+                        <div class="login-divider">want to teach?</div>
+                        <a href="/register/volunteer" class="btn btn-outline-blue btn-lg" style="width:100%;justify-content:center;">
+                            Volunteer as a Teacher →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /panels -->
+
+        <div class="login-footer-note">
+            <p>🙏 <em>Jai Jinendra</em> · All GJPP data is stored securely and never shared with third parties.</p>
+        </div>
+
+    </div><!-- /login-wrap -->
+</div>
+
+<script>
+function switchRole(role) {
+    // Hide all panels
+    document.querySelectorAll('.login-panel').forEach(p => p.classList.remove('active'));
+    // Remove active from all tabs
+    document.querySelectorAll('.role-tab').forEach(t => {
+        t.classList.remove('active-admin', 'active-parent', 'active-teacher');
+    });
+    // Show selected
+    document.getElementById('panel-' + role).classList.add('active');
+    document.getElementById('tab-' + role).classList.add('active-' + role);
+}
+
+function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ region.name if region }} Students - GJPP{% endblock %}
+{% block extra_css %}<style>.pg{padding:2rem 2.5rem;}.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}.sc-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}.sc-head h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);}.av{width:30px;height:30px;border-radius:50%;background:#5B1A8A;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;margin-right:0.5rem;}</style>{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="background:linear-gradient(135deg,#5B1A8A,#3D0F6A);border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:1rem;font-weight:800;color:#fff;">{{ region.flag if region }} {{ region.name if region }} · Students</div>
+    <span style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:rgba(255,255,255,0.9);">{{ students|length }}</span>
+  </div>
+  <div class="pg-title">Students — {{ region.name if region }}</div>
+  <div class="pg-sub">All students enrolled in your region</div>
+  <form method="GET" style="display:flex;gap:0.75rem;margin-bottom:1.5rem;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.1rem 1.25rem;">
+    <div style="flex:1;"><div style="font-size:0.72rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.3rem;">Name</div><input type="text" name="name" value="{{ q_name }}" placeholder="Search name…" class="form-input" style="height:36px;padding:0.35rem 0.75rem;"></div>
+    <div style="flex:1;"><div style="font-size:0.72rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.3rem;">City</div><input type="text" name="city" value="{{ q_city }}" placeholder="City…" class="form-input" style="height:36px;padding:0.35rem 0.75rem;"></div>
+    <div style="align-self:flex-end;display:flex;gap:0.5rem;"><button type="submit" class="btn btn-blue" style="height:36px;padding:0.35rem 0.9rem;">Filter</button><a href="/radmin/students" class="btn btn-outline-blue" style="height:36px;padding:0.35rem 0.75rem;">✕</a></div>
+  </form>
+  <div class="sc">
+    <div class="sc-head"><h3>{{ students|length }} Student{{ 's' if students|length != 1 }}</h3></div>
+    <table class="tbl">
+      <thead><tr><th>Student</th><th>Age</th><th>Level</th><th>City</th><th>Parent</th><th>WhatsApp</th><th>Enrolled</th></tr></thead>
+      <tbody>
+        {% for s in students %}
+        <tr><td><div style="display:flex;align-items:center;"><div class="av">{{ s.name[0] }}</div><strong>{{ s.name }}</strong></div></td><td>{{ s.age }}</td><td><span class="tag tag-blue">{{ s.level }}</span></td><td>{{ s.city }}</td><td>{{ s.parent1_name }}</td><td style="font-size:0.78rem;color:var(--text-muted);">{{ s.parent1_whatsapp }}</td><td style="font-size:0.78rem;color:var(--text-muted);">{{ s.registered_at }}</td></tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--text-muted);">No students found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

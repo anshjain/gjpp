@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Video Requests - Parent GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:2rem 2.5rem;}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}
+.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}
+.req-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.1rem;transition:all 0.2s;}
+.req-card.pending{border-left:4px solid var(--jain-red);}
+.req-card.submitted{border-left:4px solid var(--jain-green);}
+.req-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid var(--border);}
+.req-body{padding:1.25rem 1.5rem;}
+.upload-form{background:var(--bg);border-radius:10px;padding:1.25rem;border:1px dashed rgba(13,43,110,0.2);}
+.upload-form h4{font-size:0.82rem;font-weight:800;color:var(--jain-blue);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.07em;}
+.vid-uploaded{display:flex;align-items:center;gap:0.75rem;padding:0.75rem;background:var(--green-light);border-radius:9px;border:1px solid rgba(26,122,60,0.2);}
+.status-badge{padding:0.2rem 0.7rem;border-radius:100px;font-size:0.72rem;font-weight:800;}
+.sb-p{background:var(--red-light);color:var(--red-dark);}
+.sb-s{background:var(--green-light);color:var(--green-dark);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-title">Video Requests</div>
+  <div class="pg-sub">Your children's activity video assignments from teachers</div>
+
+  {% if requests %}
+  {% for req in requests|sort(attribute='created_at',reverse=True) %}
+  <div class="req-card {{ req.status }}">
+    <div class="req-head">
+      <div>
+        <div style="font-weight:800;color:var(--jain-blue);font-size:0.95rem;">🎬 {{ req.topic }}</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.1rem;">For {{ req.student_name }} · From teacher {{ req.teacher_name }}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;">
+        <span class="status-badge {{ 'sb-s' if req.status=='submitted' else 'sb-p' }}">
+          {{ '✅ Submitted' if req.status=='submitted' else '⏳ Pending' }}
+        </span>
+        {% if req.due_date %}<span style="font-size:0.72rem;color:var(--text-muted);">Due: {{ req.due_date }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="req-body">
+      {% if req.status == 'submitted' %}
+      <div class="vid-uploaded">
+        <span style="font-size:1.5rem;">🎬</span>
+        <div>
+          <div style="font-weight:700;font-size:0.86rem;color:var(--green-dark);">Video uploaded!</div>
+          <div style="font-size:0.75rem;color:var(--green-dark);opacity:0.75;">{{ req.video_name }}</div>
+        </div>
+      </div>
+      {% else %}
+      <!-- Upload form -->
+      <div class="upload-form">
+        <h4>📤 Upload Video for {{ req.student_name }}</h4>
+        <form method="POST" action="/parent/upload-video" enctype="multipart/form-data">
+          <input type="hidden" name="request_id" value="{{ req.id }}">
+          <input type="hidden" name="student_id" value="{{ req.student_id }}">
+          <div class="form-group">
+            <label class="form-label">Video Title</label>
+            <input type="text" name="video_title" class="form-input" placeholder="e.g. {{ req.student_name }}'s {{ req.topic }}" style="height:38px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Video File or URL</label>
+            <input type="text" name="video_url" class="form-input" placeholder="Paste video link (YouTube, Drive) or enter filename" style="height:38px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+            <textarea name="description" class="form-textarea" style="min-height:70px;" placeholder="What did {{ req.student_name }} learn?"></textarea>
+          </div>
+          <button type="submit" class="btn btn-red" style="width:100%;justify-content:center;margin-top:0.25rem;">🎬 Submit Video</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div style="text-align:center;padding:4rem 2rem;background:#fff;border:1.5px solid var(--border);border-radius:14px;">
+    <div style="font-size:3rem;margin-bottom:1rem;">🎬</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.5rem;">No video requests yet</div>
+    <p style="color:var(--text-muted);font-size:0.875rem;">Your child's teacher will send video requests here when they're ready for activity submissions.</p>
+  </div>
+  {% endif %}
+
+  <!-- Uploaded videos -->
+  {% if uploads %}
+  <div style="margin-top:2rem;">
+    <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--jain-blue);margin-bottom:1rem;">📹 Uploaded Videos ({{ uploads|length }})</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+      {% for v in uploads %}
+      <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div style="height:90px;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));display:flex;align-items:center;justify-content:center;font-size:2.5rem;">🎬</div>
+        <div style="padding:0.9rem;">
+          <div style="font-weight:700;font-size:0.86rem;color:var(--jain-blue);margin-bottom:0.2rem;">{{ v.title }}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);">{{ v.student_name }} · {{ v.uploaded_at }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

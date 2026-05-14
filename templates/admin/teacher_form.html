@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if action=='edit' else 'Add' }} Teacher - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.content{padding:2.5rem;background:var(--bg);display:flex;justify-content:center;align-items:flex-start;}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;width:100%;max-width:700px;box-shadow:var(--shadow-lg);}
+.form-card-header{padding:2rem 2.5rem;background:linear-gradient(135deg,var(--jain-red),var(--red-dark));position:relative;overflow:hidden;}
+.form-card-header::before{content:'📖';position:absolute;right:2rem;top:50%;transform:translateY(-50%);font-size:5rem;opacity:0.12;}
+.form-card-header h2{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:#fff;}
+.form-card-header p{color:rgba(255,255,255,0.6);font-size:0.875rem;margin-top:0.3rem;}
+.form-body{padding:2.5rem;}
+.form-section-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);margin:1.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--jain-red);}
+.form-section-title:first-child{margin-top:0;}
+</style>
+{% endblock %}
+{% block content %}
+<div style="padding:2rem 2.5rem;"><div class="form-card">
+      <div class="form-card-header">
+        <h2>{{ '✏️ Edit Teacher' if action=='edit' else '➕ Add New Teacher' }}</h2>
+        <p>{{ 'Update this teacher\'s details and class assignment.' if action=='edit' else 'Add a new teacher to the GJPP platform.' }}</p>
+      </div>
+      <div class="form-body">
+        <form method="POST">
+          <div class="form-section-title">Personal Information</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name <span>*</span></label>
+              <input type="text" name="name" class="form-input" required placeholder="e.g. Meena Kothari" value="{{ teacher.name if teacher else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone / WhatsApp</label>
+              <input type="tel" name="phone" class="form-input" placeholder="+1 555 000 0000" value="{{ teacher.phone if teacher else '' }}">
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Email Address <span>*</span></label>
+              <input type="email" name="email" class="form-input" required placeholder="teacher@example.com" value="{{ teacher.email if teacher else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password <span>*</span></label>
+              <input type="text" name="password" class="form-input" placeholder="{{ 'Leave blank to keep unchanged' if action=='edit' else 'Set login password' }}" {{ 'required' if action=='new' }}>
+            </div>
+          </div>
+
+          <div class="form-section-title">Location</div>
+          <div class="form-group">
+            <label class="form-label">Region <span>*</span></label>
+            <select name="region" class="form-select" required>
+              <option value="">Select region…</option>
+              {% for r in regions %}
+              <option value="{{ r.id }}" {% if teacher and teacher.region==r.id %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Country <span>*</span></label>
+              <input type="text" name="country" class="form-input" required placeholder="e.g. United States" value="{{ teacher.country if teacher else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">City <span>*</span></label>
+              <input type="text" name="city" class="form-input" required placeholder="e.g. New York" value="{{ teacher.city if teacher else '' }}">
+            </div>
+          </div>
+
+          <div class="form-section-title">Class Assignment</div>
+          <div class="form-group">
+            <label class="form-label">Assign Class</label>
+            <select name="class_id" class="form-select">
+              <option value="">Not assigned</option>
+              {% for r in regions %}
+                {% for l in levels %}
+                <option value="class-{{ l.id }}-{{ r.id }}" {% if teacher and teacher.class_id=='class-'+l.id+'-'+r.id %}selected{% endif %}>
+                  {{ r.flag }} {{ r.name }} — {{ l.name }} ({{ l.age }})
+                </option>
+                {% endfor %}
+              {% endfor %}
+            </select>
+          </div>
+
+          <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+            <button type="submit" class="btn btn-red btn-lg" style="flex:1;justify-content:center;">
+              {{ '✅ Save Changes' if action=='edit' else '➕ Add Teacher' }}
+            </button>
+            <a href="/admin/teachers" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Update Location - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.loc-page{min-height:calc(100vh - 71px);display:flex;align-items:center;justify-content:center;padding:3rem 1.5rem;background:var(--bg);}
+.loc-card{background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;width:100%;max-width:640px;box-shadow:var(--shadow-lg);}
+.loc-header{padding:2.5rem;text-align:center;position:relative;overflow:hidden;}
+.admin-header{background:linear-gradient(135deg,var(--jain-green),var(--green-dark));}
+.teacher-header{background:linear-gradient(135deg,var(--jain-green),var(--green-dark));}
+.parent-header{background:linear-gradient(135deg,var(--jain-red),var(--red-dark));}
+.loc-header h2{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:#fff;}
+.loc-header p{color:rgba(255,255,255,0.65);font-size:0.9rem;margin-top:0.4rem;}
+.loc-body{padding:2.5rem;}
+.current-loc{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:2rem;}
+.current-loc h4{font-size:0.72rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.75rem;}
+.loc-row{display:flex;align-items:center;gap:0.75rem;font-size:0.875rem;color:var(--text-mid);margin-bottom:0.4rem;font-weight:600;}
+.pending-box{background:var(--yellow-light);border:1px solid rgba(245,197,24,0.35);border-radius:12px;padding:1.5rem;text-align:center;}
+.pending-box .icon{font-size:2rem;margin-bottom:0.5rem;}
+.pending-box h3{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--yellow-dark);margin-bottom:0.4rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="loc-page">
+  <div class="loc-card">
+    <div class="loc-header {{ user.role }}-header">
+      <div style="font-size:2.5rem;margin-bottom:0.75rem;">📍</div>
+      <h2>Request Location Update</h2>
+      <p>Submit a request to update your region, country and city. An admin will review and approve it.</p>
+    </div>
+    <div class="loc-body">
+      {% if existing %}
+      <div class="pending-box">
+        <div class="icon">⏳</div>
+        <h3>Request Already Pending</h3>
+        <p style="color:var(--yellow-dark);font-size:0.875rem;margin-bottom:1rem;">
+          You already have a pending location update request submitted on {{ existing.submitted_at[:10] }}.
+          Please wait for admin review.
+        </p>
+        <div style="background:#fff;border-radius:10px;padding:1rem;margin-bottom:1rem;text-align:left;">
+          <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.6rem;">Requested New Location</div>
+          <div style="font-size:0.875rem;font-weight:700;color:var(--jain-blue);">{{ existing.new_city }}, {{ existing.new_country }}</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);">{{ region_label(existing.new_region) }}</div>
+        </div>
+        <a href="/dashboard" class="btn btn-outline-blue" style="justify-content:center;width:100%;">← Back to Dashboard</a>
+      </div>
+      {% else %}
+      <!-- Current location -->
+      <div class="current-loc">
+        <h4>Your Current Location</h4>
+        <div class="loc-row">🌍 <span>{{ region_label(user.region) }}</span></div>
+        <div class="loc-row">🏳️ <span>{{ user.country }}</span></div>
+        <div class="loc-row">🏙️ <span>{{ user.city }}</span></div>
+      </div>
+
+      <!-- Request form -->
+      <form method="POST">
+        <div style="font-size:0.78rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--jain-blue);margin-bottom:1rem;">New Location</div>
+        <div class="form-group">
+          <label class="form-label">New Region <span>*</span></label>
+          <select name="region" class="form-select" required>
+            <option value="">Select region…</option>
+            {% for r in regions %}
+            <option value="{{ r.id }}">{{ r.flag }} {{ r.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">New Country <span>*</span></label>
+            <input type="text" name="country" class="form-input" required placeholder="e.g. Canada">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New City <span>*</span></label>
+            <input type="text" name="city" class="form-input" required placeholder="e.g. Toronto">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reason for Move</label>
+          <textarea name="reason" class="form-textarea" style="min-height:80px;" placeholder="Optional: briefly explain why you're updating your location…"></textarea>
+        </div>
+        <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+          <button type="submit" class="btn {{ 'btn-green' if user.role=='teacher' else 'btn-red' }} btn-lg" style="flex:1;justify-content:center;">
+            Submit Request
+          </button>
+          <a href="/dashboard" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

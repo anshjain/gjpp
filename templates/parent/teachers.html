@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Our Teachers - Parent GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg { padding:2rem 2.5rem; }
+.pg-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:800; color:var(--jain-blue); margin-bottom:0.2rem; }
+.pg-sub   { color:var(--text-muted); font-size:0.875rem; margin-bottom:1.75rem; }
+.tabs { display:flex; gap:0.5rem; margin-bottom:1.75rem; background:#fff; border:1.5px solid var(--border); border-radius:10px; padding:0.35rem; width:fit-content; }
+.tab-btn { padding:0.45rem 1.1rem; border-radius:7px; border:none; background:transparent; font-family:'Nunito',sans-serif; font-size:0.85rem; font-weight:700; color:var(--text-muted); cursor:pointer; transition:all 0.18s; }
+.tab-btn.active { background:var(--jain-red); color:#fff; }
+.teachers-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1.25rem; }
+.teacher-card { background:#fff; border:1.5px solid var(--border); border-radius:14px; overflow:hidden; transition:all 0.2s; }
+.teacher-card:hover { box-shadow:0 6px 22px rgba(13,43,110,0.1); transform:translateY(-2px); }
+.teacher-card.my-teacher { border-color:var(--jain-red); box-shadow:0 0 0 2px rgba(200,16,46,0.15); }
+.tc-head { padding:1.25rem; border-bottom:1px solid var(--border); border-top:4px solid var(--jain-green); display:flex; align-items:center; gap:1rem; }
+.tc-av { width:46px; height:46px; border-radius:50%; background:var(--jain-green); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:1.2rem; font-weight:800; flex-shrink:0; }
+.tc-body { padding:1.25rem; }
+.tc-class { display:inline-flex; align-items:center; gap:0.4rem; background:var(--blue-light); color:var(--jain-blue); padding:0.3rem 0.7rem; border-radius:8px; font-size:0.75rem; font-weight:800; margin-bottom:0.75rem; }
+.student-chip { display:inline-flex; align-items:center; gap:0.3rem; background:var(--bg); border:1px solid var(--border); padding:0.2rem 0.55rem; border-radius:100px; font-size:0.72rem; font-weight:700; color:var(--text-mid); margin:0.15rem; }
+.my-child-chip { background:var(--red-light); border-color:rgba(200,16,46,0.2); color:var(--red-dark); }
+.region-sep { font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); padding:0.85rem 0 0.35rem; border-top:1px solid var(--border); margin-top:1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="background:linear-gradient(135deg,var(--jain-red),var(--red-dark));border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+    <div>
+      <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);margin-bottom:0.15rem;">Teaching Team</div>
+      <div style="font-size:1rem;font-weight:800;color:#fff;">{{ region.flag if region }} {{ region.name if region }} · {{ teacher_info|length }} teacher{{ 's' if teacher_info|length != 1 }}</div>
+    </div>
+    <a href="/parent/children" class="btn btn-white" style="font-size:0.82rem;padding:0.45rem 1rem;">My Children →</a>
+  </div>
+
+  <div class="pg-title">Our Teachers</div>
+  <div class="pg-sub">Teachers in your region and across all GJPP — see which class they teach and who their students are</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('region',this)">My Region ({{ teacher_info|length }})</button>
+    <button class="tab-btn" onclick="showTab('all',this)">All Regions ({{ all_teacher_info|length }})</button>
+  </div>
+
+  <!-- My region teachers -->
+  <div id="tab-region">
+    {% set my_child_ids = my_children|map(attribute='class_id')|list %}
+    {% if teacher_info %}
+    <div class="teachers-grid">
+      {% for ti in teacher_info %}
+      {% set t = ti.teacher %}
+      {% set is_my_teacher = ti.students|selectattr('parent1_email','eq',user.email)|list|length > 0 %}
+      <div class="teacher-card {{ 'my-teacher' if is_my_teacher }}">
+        <div class="tc-head">
+          <div class="tc-av">{{ t.name[0] }}</div>
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);">{{ t.name }}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">{{ t.city }}, {{ t.country }}</div>
+            {% if is_my_teacher %}
+            <span style="background:var(--red-light);color:var(--red-dark);font-size:0.65rem;font-weight:800;padding:0.1rem 0.5rem;border-radius:100px;">MY CHILD'S TEACHER</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="tc-body">
+          <div class="tc-class">
+            📋 {{ t.class_id or 'Unassigned' }}
+            {% if ti.level %} · {{ ti.level.name }} ({{ ti.level.age }}){% endif %}
+          </div>
+          <div style="font-size:0.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.4rem;">Students ({{ ti.student_count }})</div>
+          <div>
+            {% for s in ti.students %}
+            {% set is_mine = s.parent1_email|lower == user.email|lower %}
+            <span class="student-chip {{ 'my-child-chip' if is_mine }}">
+              {{ '★ ' if is_mine }}{{ s.name }}
+            </span>
+            {% else %}
+            <span style="font-size:0.8rem;color:var(--text-muted);">No students enrolled yet</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:4rem 2rem;background:#fff;border:1.5px solid var(--border);border-radius:14px;">
+      <div style="font-size:2.5rem;margin-bottom:0.75rem;">📖</div>
+      <div style="font-weight:700;color:var(--jain-blue);">No teachers in your region yet</div>
+      <p style="color:var(--text-muted);font-size:0.875rem;margin-top:0.4rem;">Teachers for {{ region.name if region }} will appear here once assigned.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- All regions -->
+  <div id="tab-all" style="display:none;">
+    {% set grouped = {} %}
+    {% for ti in all_teacher_info %}
+      {% set rname = ti.region.name if ti.region else 'Unknown' %}
+    {% endfor %}
+    {% for ti in all_teacher_info %}
+    {% set t = ti.teacher %}
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1rem;">
+      <div class="tc-head" style="border-top-color:var(--jain-blue);">
+        <div class="tc-av" style="background:var(--jain-blue);">{{ t.name[0] }}</div>
+        <div style="flex:1;">
+          <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);">{{ t.name }}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);">{{ ti.region.flag if ti.region }} {{ ti.region.name if ti.region }} · {{ t.city }}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="tc-class">{{ t.class_id or 'Unassigned' }}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);">{{ ti.student_count }} student{{ 's' if ti.student_count!=1 }}</div>
+        </div>
+      </div>
+      <div class="tc-body">
+        {% if ti.level %}<div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:0.6rem;font-weight:600;">Level: {{ ti.level.name }} · {{ ti.level.age }}</div>{% endif %}
+        <div>
+          {% for s in ti.students %}
+          <span class="student-chip">{{ s.name }} ({{ s.city }})</span>
+          {% else %}
+          <span style="font-size:0.8rem;color:var(--text-muted);">No students enrolled</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+function showTab(tab, btn) {
+  document.getElementById('tab-region').style.display = tab==='region' ? 'block' : 'none';
+  document.getElementById('tab-all').style.display    = tab==='all'    ? 'block' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

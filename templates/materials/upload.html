@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Upload Material - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:2rem 2.5rem;display:flex;justify-content:center;}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;width:100%;max-width:700px;box-shadow:var(--shadow-lg);}
+.form-head{padding:2rem 2.5rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));position:relative;overflow:hidden;}
+.form-head::before{content:'📂';position:absolute;right:2rem;top:50%;transform:translateY(-50%);font-size:5rem;opacity:0.12;}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:#fff;}
+.form-head p{color:rgba(255,255,255,0.6);font-size:0.875rem;margin-top:0.3rem;}
+.form-body{padding:2.5rem;}
+.form-section-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);margin:1.5rem 0 0.85rem;padding-bottom:0.45rem;border-bottom:2px solid var(--jain-blue);}
+.form-section-title:first-child{margin-top:0;}
+.upload-zone{border:2px dashed rgba(13,43,110,0.25);border-radius:12px;padding:2.5rem;text-align:center;background:var(--bg);transition:all 0.2s;cursor:pointer;}
+.upload-zone:hover{border-color:var(--jain-blue);background:var(--blue-light);}
+.upload-zone .uz-icon{font-size:2.5rem;margin-bottom:0.75rem;}
+.upload-zone p{font-size:0.875rem;color:var(--text-muted);margin-top:0.4rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>⬆️ Upload Study Material</h2>
+      <p>
+        {% if user.role == 'regional_admin' %}Material will be visible to {{ region_label(user.region) }} region only
+        {% else %}Choose region scope for this material{% endif %}
+      </p>
+    </div>
+    <div class="form-body">
+      <form method="POST" enctype="multipart/form-data">
+        <div class="form-section-title">Material Details</div>
+        <div class="form-group">
+          <label class="form-label">Title <span>*</span></label>
+          <input type="text" name="title" class="form-input" required placeholder="e.g. Navkar Mantra Study Guide">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-textarea" placeholder="Brief description of this material…"></textarea>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Class Level <span>*</span></label>
+            <select name="level" class="form-select" required>
+              <option value="">Select level…</option>
+              {% for l in levels %}
+              <option value="{{ l.id }}">{{ l.name }} ({{ l.age }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">File Type</label>
+            <select name="file_type" class="form-select">
+              <option value="pdf">PDF Document</option>
+              <option value="video">Video</option>
+              <option value="doc">Word Document</option>
+              <option value="ppt">Presentation</option>
+              <option value="image">Image</option>
+            </select>
+          </div>
+        </div>
+
+        {% if user.role == 'admin' %}
+        <div class="form-group">
+          <label class="form-label">Region Scope <span>*</span></label>
+          <select name="region" class="form-select" required>
+            <option value="global">🌍 Global (all regions)</option>
+            {% for r in regions %}
+            <option value="{{ r.id }}">{{ r.flag }} {{ r.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% else %}
+        <input type="hidden" name="region" value="{{ user.region }}">
+        <div style="background:var(--blue-light);border-radius:9px;padding:0.75rem 1rem;font-size:0.85rem;color:var(--text-mid);margin-bottom:1.25rem;">
+          📍 This material will be uploaded for <strong>{{ region_label(user.region) }}</strong> region only.
+        </div>
+        {% endif %}
+
+        <div class="form-section-title">File Upload</div>
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <div class="uz-icon">📁</div>
+          <div style="font-weight:700;color:var(--jain-blue);">Click to select file</div>
+          <p>PDF, Video, Word, PowerPoint or Image · Max 50MB</p>
+          <input type="file" id="file-input" name="file" accept=".pdf,.mp4,.doc,.docx,.ppt,.pptx,.png,.jpg" style="display:none;" onchange="updateFileName(this)">
+        </div>
+        <div id="file-name-display" style="font-size:0.82rem;color:var(--jain-blue);font-weight:700;margin-top:0.6rem;display:none;"></div>
+
+        <!-- File name fallback for demo (since we don't have actual file storage) -->
+        <div class="form-group" style="margin-top:1rem;">
+          <label class="form-label">File Name <span style="color:var(--text-muted);font-weight:400;">(or enter manually for demo)</span></label>
+          <input type="text" name="file_name" class="form-input" placeholder="e.g. navkar_guide.pdf">
+        </div>
+
+        <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+          <button type="submit" class="btn btn-blue btn-lg" style="flex:1;justify-content:center;">📤 Upload Material</button>
+          <a href="/materials" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function updateFileName(input) {
+  const display = document.getElementById('file-name-display');
+  if (input.files && input.files[0]) {
+    display.textContent = '✅ Selected: ' + input.files[0].name;
+    display.style.display = 'block';
+    const nameInput = document.querySelector('[name="file_name"]');
+    if (nameInput && !nameInput.value) nameInput.value = input.files[0].name;
+  }
+}
+</script>
+{% endblock %}

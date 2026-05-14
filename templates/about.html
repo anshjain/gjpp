@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}About GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.values-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-bottom:3.5rem;}
+.value-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.6rem;transition:all 0.2s;}
+.value-card:hover{border-color:var(--jain-blue);box-shadow:0 6px 22px rgba(13,43,110,0.1);transform:translateY(-2px);}
+.community-cta{background:linear-gradient(135deg,var(--jain-blue) 0%,var(--blue-mid) 100%);border-radius:20px;padding:4rem 3rem;text-align:center;position:relative;overflow:hidden;}
+.community-cta::before{content:'';position:absolute;width:400px;height:400px;background:radial-gradient(circle,rgba(245,197,24,0.15) 0%,transparent 70%);right:-80px;top:50%;transform:translateY(-50%);pointer-events:none;}
+.community-cta h2{font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:800;color:#fff;margin-bottom:0.85rem;position:relative;}
+.community-cta p{color:rgba(255,255,255,0.65);font-size:1rem;margin-bottom:2rem;max-width:520px;margin-left:auto;margin-right:auto;position:relative;}
+.community-cta .actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;position:relative;}
+.stat-banner{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:3.5rem;}
+.stat-item{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;}
+.stat-item .n{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:800;color:var(--jain-blue);line-height:1;}
+.stat-item .l{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-top:0.25rem;}
+@media(max-width:768px){.values-grid{grid-template-columns:1fr 1fr;}.stat-banner{grid-template-columns:1fr 1fr;}.community-cta{padding:2.5rem 1.5rem;}.community-cta h2{font-size:1.8rem;}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <div class="badge badge-white" style="margin-bottom:1rem;">🙏 Jai Jinendra</div>
+        <h1>About GJPP</h1>
+        <p>Our mission, our story, and the global community we're building together — one family at a time.</p>
+    </div>
+</div>
+
+<div class="container section">
+    <!-- Mission -->
+    <div style="max-width:780px;margin:0 auto 3.5rem;">
+        <div class="section-label">Our Purpose</div>
+        <h2 class="section-title">Our Mission</h2>
+        <p style="font-size:1rem;color:var(--text-muted);line-height:1.8;margin-bottom:1.25rem;">
+            Global Jain Pramanik Pathshala (GJPP) exists to make authentic Jain education accessible to every Jain family on Earth — whether they're in Mumbai or Melbourne, London or Los Angeles.
+        </p>
+        <p style="font-size:1rem;color:var(--text-muted);line-height:1.8;margin-bottom:1.25rem;">
+            Founded by a network of dedicated Jain volunteers, GJPP provides structured, level-based Jain education to students aged 3 through 99. We believe that cultural and spiritual heritage is a living inheritance — and that every child deserves to know the depth and beauty of Jain dharma.
+        </p>
+        <p style="font-size:1rem;color:var(--text-muted);line-height:1.8;">
+            Our platform combines online learning, local Pathshala discovery, volunteer empowerment, and community events — all driven by the values of Ahimsa, Satya, and Seva.
+        </p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-banner">
+        <div class="stat-item"><div class="n">1,200+</div><div class="l">Students Enrolled</div></div>
+        <div class="stat-item"><div class="n">6</div><div class="l">Global Regions</div></div>
+        <div class="stat-item"><div class="n">42</div><div class="l">Active Pathshalas</div></div>
+        <div class="stat-item"><div class="n">186</div><div class="l">Volunteers</div></div>
+    </div>
+
+    <!-- Values -->
+    <div class="section-label">What We Stand For</div>
+    <h2 class="section-title" style="margin-bottom:2rem;">Our Core Values</h2>
+    <div class="values-grid">
+        {% for icon, title, desc, color in [
+            ("🕊️", "Ahimsa",        "Non-violence is at the heart of everything we teach and how we operate as an organisation.", "var(--jain-green)"),
+            ("🌍", "Global Reach",  "Serving Jain families across 6 continents with localised, time-zone-aware education.", "var(--jain-blue)"),
+            ("🤝", "Community",     "Powered entirely by volunteers who give their time out of love for dharma and community.", "var(--jain-red)"),
+            ("📱", "Modern",        "WhatsApp-native communication meets structured curriculum for modern, connected families.", "var(--jain-yellow)"),
+            ("🧒", "All Ages",      "From 3-year-olds discovering prayers to grandparents deepening their philosophical study.", "var(--jain-green)"),
+            ("🏫", "Local + Global","Online classes and in-person Pathshala discovery for a complete, blended experience.", "var(--jain-blue)"),
+        ] %}
+        <div class="value-card">
+            <div style="font-size:2rem;margin-bottom:0.65rem;">{{ icon }}</div>
+            <h3 style="font-size:1rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.4rem;border-left:3px solid {{ color }};padding-left:0.6rem;">{{ title }}</h3>
+            <p style="font-size:0.875rem;color:var(--text-muted);line-height:1.6;">{{ desc }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Join CTA - FIXED -->
+    <div class="community-cta">
+        <h2>Join Our Global Community</h2>
+        <p>Whether as a student, parent, teacher, or volunteer — there's a place for you in GJPP. Start your Jain learning journey today.</p>
+        <div class="actions">
+            <a href="/register/student" class="btn btn-yellow btn-lg">🎓 Enroll Now</a>
+            <a href="/register/volunteer" class="btn btn-outline-white btn-lg">🤝 Volunteer</a>
+            <a href="/login" class="btn btn-white btn-lg">🔑 Sign In</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

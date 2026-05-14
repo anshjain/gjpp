@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Volunteer - GJPP{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <div class="badge badge-gold" style="margin-bottom:1rem;">🤝 Volunteer</div>
+        <h1>Join Our Volunteer Team</h1>
+        <p>GJPP is powered by dedicated volunteers worldwide. Share your skills and help us preserve Jain dharma for future generations.</p>
+    </div>
+</div>
+<div class="container section-sm" style="max-width:720px;">
+    <div class="card">
+        <form method="POST" style="padding:2rem;">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Full Name <span style="color:var(--blue);">*</span></label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email <span style="color:var(--blue);">*</span></label>
+                    <input type="email" name="email" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">WhatsApp Number <span style="color:var(--blue);">*</span></label>
+                <input type="tel" name="whatsapp" class="form-input" required placeholder="+1 555 000 0000">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Skills (select all that apply)</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.5rem;">
+                    {% for skill in ["Teaching / Tutoring", "Technology / Web", "Design / Creative", "Event Coordination", "Translation / Languages", "Administrative Support", "Video / Media Production", "Community Outreach"] %}
+                    <label style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.875rem;">
+                        <input type="checkbox" name="skills" value="{{ skill }}" style="accent-color:var(--blue);">
+                        {{ skill }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Availability</label>
+                <select name="availability" class="form-select">
+                    <option>Weekends only</option>
+                    <option>Weekdays only</option>
+                    <option>Both weekdays and weekends</option>
+                    <option>Flexible</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Preferred Region</label>
+                <select name="region" class="form-select">
+                    <option value="">No preference (Global)</option>
+                    {% for region in regions %}
+                    <option value="{{ region.id }}">{{ region.flag }} {{ region.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Submit Volunteer Application 🌟</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

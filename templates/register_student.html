@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% block title %}Enroll a Student - GJPP{% endblock %}
+
+{% block extra_css %}
+<style>
+.register-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 3rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.form-card {
+    background: var(--white);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.form-section {
+    padding: 2rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-section:last-child { border-bottom: none; }
+
+.form-section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-section-subtitle {
+    font-size: 0.825rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+.sidebar-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    position: sticky;
+    top: 84px;
+    box-shadow: var(--shadow);
+}
+
+.sidebar-card h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    color: var(--text);
+    margin-bottom: 1.25rem;
+}
+
+.info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.info-row .icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem; }
+
+.submit-wrap {
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(232,101,26,0.05), rgba(212,160,23,0.05));
+    border-top: 1px solid var(--border);
+}
+
+.radio-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.radio-option {
+    position: relative;
+}
+
+.radio-option input { position: absolute; opacity: 0; }
+
+.radio-option label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    background: var(--off-white);
+}
+
+.radio-option input:checked + label {
+    border-color: var(--blue);
+    background: rgba(232,101,26,0.08);
+    color: var(--navy);
+}
+
+.level-select-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.level-option input { position: absolute; opacity: 0; }
+
+.level-option {
+    position: relative;
+}
+
+.level-option label {
+    display: block;
+    padding: 0.875rem;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--off-white);
+}
+
+.level-option input:checked + label {
+    border-color: var(--blue);
+    background: rgba(232,101,26,0.07);
+}
+
+.level-option label strong {
+    display: block;
+    font-size: 0.88rem;
+    color: var(--text);
+}
+
+.level-option label span {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <div class="badge badge-saffron" style="margin-bottom:1rem;">📚 Student Enrollment</div>
+        <h1>Enroll a Student</h1>
+        <p>Complete this form to register your child or family member in GJPP. One-time registration enables easy enrollment for all future classes, events, and camps.</p>
+    </div>
+</div>
+
+<div class="section-sm">
+<div class="register-layout">
+    <div>
+        <form method="POST" action="/register/student">
+            <div class="form-card">
+                <!-- Student Info -->
+                <div class="form-section">
+                    <div class="form-section-title">👤 Student Information</div>
+                    <div class="form-section-subtitle">Basic details about the student enrolling in GJPP.</div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Full Name <span>*</span></label>
+                            <input type="text" name="name" class="form-input" placeholder="Student's full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Age <span>*</span></label>
+                            <input type="number" name="age" class="form-input" placeholder="Age in years" min="3" max="99" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Gender</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="gender" id="g-m" value="Male">
+                                <label for="g-m">♂ Male</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="gender" id="g-f" value="Female">
+                                <label for="g-f">♀ Female</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="gender" id="g-o" value="Other">
+                                <label for="g-o">⚧ Other</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="gender" id="g-n" value="Prefer not to say">
+                                <label for="g-n">🔒 Prefer not to say</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Class Level <span>*</span></label>
+                        <div class="level-select-grid">
+                            {% for level in levels %}
+                            <div class="level-option">
+                                <input type="radio" name="level" id="lvl-{{ level.id }}" value="{{ level.id }}" required>
+                                <label for="lvl-{{ level.id }}">
+                                    <strong>{{ level.name }}</strong>
+                                    <span>{{ level.age }}</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Region <span>*</span></label>
+                        <select name="region" class="form-select" required>
+                            <option value="">Select your region...</option>
+                            {% for region in regions %}
+                            <option value="{{ region.id }}">{{ region.flag }} {{ region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Parent 1 -->
+                <div class="form-section">
+                    <div class="form-section-title">👨‍👩‍👦 Parent / Guardian (Primary) <span style="color:var(--blue);font-size:0.9rem;">*</span></div>
+                    <div class="form-section-subtitle">This contact will receive all class communications via WhatsApp.</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Parent/Guardian Name <span>*</span></label>
+                        <input type="text" name="parent1_name" class="form-input" placeholder="Full name" required>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">WhatsApp Number <span>*</span></label>
+                            <input type="tel" name="parent1_whatsapp" class="form-input" placeholder="+1 555 000 0000" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email Address <span>*</span></label>
+                            <input type="email" name="parent1_email" class="form-input" placeholder="your@email.com" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parent 2 -->
+                <div class="form-section">
+                    <div class="form-section-title">👤 Parent / Guardian (Secondary) <span style="color:var(--text-muted);font-size:0.8rem;font-weight:400;">Optional</span></div>
+                    <div class="form-section-subtitle">Add a second parent or guardian for backup communication.</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" name="parent2_name" class="form-input" placeholder="Full name (optional)">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">WhatsApp Number</label>
+                        <input type="tel" name="parent2_whatsapp" class="form-input" placeholder="+1 555 000 0000 (optional)">
+                    </div>
+                </div>
+
+                <!-- Address -->
+                <div class="form-section">
+                    <div class="form-section-title">🌍 Location</div>
+                    <div class="form-section-subtitle">Used to match you with nearby Pathshalas and local events.</div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Country <span>*</span></label>
+                            <input type="text" name="country" class="form-input" placeholder="e.g. United States" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">City</label>
+                            <input type="text" name="city" class="form-input" placeholder="e.g. New York">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agreement -->
+                <div class="form-section">
+                    <div class="form-check">
+                        <input type="checkbox" id="agreed" name="agreed" required>
+                        <label for="agreed">
+                            I confirm that I am 18 years of age or older, and I consent to receive communications via WhatsApp and email regarding GJPP classes, events, and announcements. I agree that the information provided is accurate.
+                        </label>
+                    </div>
+                </div>
+
+                <div class="submit-wrap">
+                    <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
+                        Complete Enrollment 🙏
+                    </button>
+                    <p style="text-align:center;font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem;">
+                        You'll receive a WhatsApp confirmation message within minutes.
+                    </p>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+        <div class="sidebar-card">
+            <h3>📋 What Happens Next?</h3>
+            <div class="info-row">
+                <span class="icon">✅</span>
+                <span>You'll receive a WhatsApp confirmation with your class details and schedule.</span>
+            </div>
+            <div class="info-row">
+                <span class="icon">💬</span>
+                <span>You'll be added to your region's WhatsApp group for announcements and reminders.</span>
+            </div>
+            <div class="info-row">
+                <span class="icon">📚</span>
+                <span>Your teacher will be in touch before the first class with materials and access links.</span>
+            </div>
+            <div class="info-row">
+                <span class="icon">🎂</span>
+                <span>We'll send personalized birthday wishes and festival greetings to your child!</span>
+            </div>
+
+            <div style="border-top:1px solid var(--border);margin-top:1.5rem;padding-top:1.5rem;">
+                <h3>🏫 Class Levels</h3>
+                {% for level in levels %}
+                <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.6rem;">
+                    <div style="width:10px;height:10px;border-radius:50%;background:{{ level.color }};flex-shrink:0;"></div>
+                    <div>
+                        <strong style="font-size:0.82rem;">{{ level.name }}</strong>
+                        <span style="font-size:0.78rem;color:var(--text-muted);margin-left:0.4rem;">{{ level.age }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="border-top:1px solid var(--border);margin-top:1.5rem;padding-top:1.5rem;">
+                <p style="font-size:0.825rem;color:var(--text-muted);line-height:1.6;">
+                    Need help? <a href="/enquiry" style="color:var(--blue);">Contact us</a> and we'll guide you through the process. <em>Jai Jinendra 🙏</em>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ region.name if region }} Admin Dashboard - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:2rem 2.5rem;}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}
+.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:2rem;}
+.s-box{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.25rem;position:relative;overflow:hidden;text-decoration:none;display:block;transition:all 0.2s;}
+.s-box:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+.s-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.s-box.purple::before{background:#5B1A8A;}
+.s-box.blue::before{background:var(--jain-blue);}
+.s-box.red::before{background:var(--jain-red);}
+.s-box.yellow::before{background:var(--jain-yellow);}
+.s-box.green::before{background:var(--jain-green);}
+.s-icon{font-size:1.4rem;margin-bottom:0.4rem;}
+.s-num{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:800;color:var(--jain-blue);line-height:1;}
+.s-lbl{font-size:0.7rem;font-weight:700;color:var(--text-muted);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.05em;}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
+.sc-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);}
+.qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+.qa{background:#fff;border:1.5px solid var(--border);border-radius:11px;padding:1rem;display:flex;align-items:center;gap:0.75rem;text-decoration:none;color:var(--jain-blue);font-weight:700;font-size:0.85rem;transition:all 0.2s;}
+.qa:hover{border-color:#5B1A8A;box-shadow:0 4px 16px rgba(91,26,138,0.12);transform:translateY(-1px);}
+.qa .qi{font-size:1.4rem;flex-shrink:0;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <!-- Region Banner -->
+  <div style="background:linear-gradient(135deg,#5B1A8A,#3D0F6A);border-radius:14px;padding:1.5rem 2rem;margin-bottom:1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div style="display:flex;align-items:center;gap:1.1rem;">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--jain-yellow);color:#5B1A8A;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:800;">{{ user.name[0] }}</div>
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:800;color:#fff;">Welcome, {{ user.name.split()[0] }}!</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.55);">Regional Administrator · {{ region.flag if region }} {{ region.name if region }}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+      {% for label,val in [('Region', region.name if region else '—'),('Country',user.country),('City',user.city)] %}
+      <div style="text-align:center;">
+        <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.4);margin-bottom:0.15rem;">{{ label }}</div>
+        <div style="font-size:0.9rem;font-weight:800;color:#fff;">{{ val }}</div>
+      </div>
+      {% if not loop.last %}<div style="width:1px;height:28px;background:rgba(255,255,255,0.15);"></div>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="pg-title">Regional Dashboard</div>
+  <div class="pg-sub">Managing {{ region.name if region }} · Your region data only</div>
+
+  <div class="stats-row">
+    <a href="/radmin/students" class="s-box purple"><div class="s-icon">🎓</div><div class="s-num">{{ students|length }}</div><div class="s-lbl">Students</div></a>
+    <a href="/radmin/teachers" class="s-box blue">  <div class="s-icon">📖</div><div class="s-num">{{ teachers|length }}</div><div class="s-lbl">Teachers</div></a>
+    <a href="/radmin/events"   class="s-box red">   <div class="s-icon">📅</div><div class="s-num">{{ events|length }}</div><div class="s-lbl">Events</div></a>
+    <a href="/materials"       class="s-box yellow"> <div class="s-icon">📂</div><div class="s-num">{{ materials|length }}</div><div class="s-lbl">Materials</div></a>
+    <div class="s-box green">                        <div class="s-icon">🤝</div><div class="s-num">{{ volunteers|length }}</div><div class="s-lbl">Volunteers</div></div>
+  </div>
+
+  <div class="qa-grid">
+    <a href="/radmin/students"  class="qa"><span class="qi">🎓</span>View Students</a>
+    <a href="/radmin/teachers"  class="qa"><span class="qi">📖</span>View Teachers</a>
+    <a href="/radmin/events/new" class="qa"><span class="qi">📅</span>Create Event</a>
+    <a href="/materials/upload" class="qa"><span class="qi">⬆️</span>Upload Material</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div class="sc">
+      <div class="sc-head"><h3>Recent Students</h3><a href="/radmin/students" class="btn btn-blue" style="font-size:0.78rem;padding:0.4rem 0.85rem;">View All →</a></div>
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Level</th><th>City</th></tr></thead>
+        <tbody>
+          {% for s in students[-5:]|reverse %}
+          <tr><td><strong>{{ s.name }}</strong></td><td><span class="tag tag-blue">{{ s.level }}</span></td><td>{{ s.city }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sc-head"><h3>Events</h3><a href="/radmin/events/new" class="btn btn-green" style="font-size:0.78rem;padding:0.4rem 0.85rem;">+ New</a></div>
+      <table class="tbl">
+        <thead><tr><th>Title</th><th>Type</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for e in events %}
+          <tr><td><strong>{{ e.title }}</strong></td><td><span class="tag tag-yellow">{{ e.type }}</span></td><td style="color:var(--text-muted);font-size:0.78rem;">{{ e.date }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sc-head"><h3>Study Materials</h3><a href="/materials/upload" class="btn btn-yellow" style="font-size:0.78rem;padding:0.4rem 0.85rem;">+ Upload</a></div>
+      <table class="tbl">
+        <thead><tr><th>Title</th><th>Level</th><th>Downloads</th></tr></thead>
+        <tbody>
+          {% for m in materials %}
+          <tr><td><strong>{{ m.title }}</strong></td><td><span class="tag tag-blue">{{ m.level }}</span></td><td>{{ m.downloads }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="sc">
+      <div class="sc-head"><h3>Teachers</h3></div>
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Class</th><th>City</th></tr></thead>
+        <tbody>
+          {% for t in teachers %}
+          <tr><td><strong>{{ t.name }}</strong></td><td style="font-size:0.78rem;color:var(--text-muted);">{{ t.class_id or '—' }}</td><td>{{ t.city }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

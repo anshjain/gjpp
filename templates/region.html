@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ region.name }} - GJPP{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <div style="font-size:3rem;margin-bottom:0.5rem;">{{ region.flag }}</div>
+        <h1>{{ region.name }}</h1>
+        <p>Local Pathshalas, class schedules, and community events for the {{ region.name }} region. All times shown in {{ region.timezone }}.</p>
+    </div>
+</div>
+
+<div class="container section">
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:3rem;">
+        <div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:3rem;">
+                <div class="card" style="padding:1.5rem;text-align:center;">
+                    <div style="font-size:2rem;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--blue);">12</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);">Active Classes</div>
+                </div>
+                <div class="card" style="padding:1.5rem;text-align:center;">
+                    <div style="font-size:2rem;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--blue);">8</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);">Local Pathshalas</div>
+                </div>
+                <div class="card" style="padding:1.5rem;text-align:center;">
+                    <div style="font-size:2rem;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--blue);">245</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);">Students</div>
+                </div>
+            </div>
+
+            <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;margin-bottom:1.5rem;">Class Schedule</h2>
+            {% for level in levels %}
+            <div style="display:flex;align-items:center;gap:1rem;padding:1.25rem;background:white;border:1px solid var(--border);border-radius:12px;margin-bottom:0.75rem;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:1rem;">
+                    <div style="width:12px;height:12px;border-radius:50%;background:{{ level.color }};flex-shrink:0;"></div>
+                    <div>
+                        <div style="font-weight:600;font-size:0.9rem;">{{ level.name }}</div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);">{{ level.age }} · Sundays · 10:00 AM {{ region.timezone.split('/')[-1] }}</div>
+                    </div>
+                </div>
+                <a href="/register/student" class="btn btn-primary" style="font-size:0.8rem;padding:0.45rem 0.9rem;">Enroll →</a>
+            </div>
+            {% endfor %}
+
+            <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;margin:2.5rem 0 1.5rem;">Upcoming Events</h2>
+            {% for event in events[:3] %}
+            <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;">
+                <div style="font-size:0.75rem;font-weight:700;color:var(--blue);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.4rem;">{{ event.type }}</div>
+                <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:600;margin-bottom:0.3rem;">{{ event.title }}</div>
+                <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;">📅 {{ event.date }}</div>
+                <p style="font-size:0.875rem;color:var(--text-muted);">{{ event.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div>
+            <div class="card" style="padding:1.75rem;margin-bottom:1.5rem;">
+                <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;margin-bottom:1.25rem;">Quick Actions</h3>
+                <a href="/register/student" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:0.75rem;">📚 Enroll a Student</a>
+                <a href="/register/pathshala" class="btn btn-outline" style="width:100%;justify-content:center;margin-bottom:0.75rem;">🏫 Start a Pathshala</a>
+                <a href="/register/volunteer" class="btn btn-outline" style="width:100%;justify-content:center;">🤝 Volunteer</a>
+            </div>
+
+            <div class="card" style="padding:1.75rem;">
+                <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;margin-bottom:1rem;">Other Regions</h3>
+                {% for r in [
+                    {"id":"north_america","name":"North America","flag":"🇺🇸"},
+                    {"id":"uk","name":"United Kingdom","flag":"🇬🇧"},
+                    {"id":"europe","name":"Europe","flag":"🇪🇺"},
+                    {"id":"india","name":"India","flag":"🇮🇳"},
+                    {"id":"australia","name":"Australia","flag":"🇦🇺"},
+                    {"id":"south_america","name":"South America","flag":"🇧🇷"},
+                ] %}
+                {% if r.id != region.id %}
+                <a href="/region/{{ r.id }}" style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0;text-decoration:none;color:var(--text);border-bottom:1px solid var(--border);font-size:0.875rem;transition:color 0.2s;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'">
+                    {{ r.flag }} {{ r.name }} →
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

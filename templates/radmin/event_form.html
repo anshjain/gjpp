@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if action=='edit' else 'New' }} Event - {{ region.name if region }} GJPP{% endblock %}
+{% block extra_css %}<style>.pg{padding:2rem 2.5rem;display:flex;justify-content:center;align-items:flex-start;}.form-card{background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;width:100%;max-width:640px;box-shadow:var(--shadow-lg);}.form-head{padding:2rem 2.5rem;background:linear-gradient(135deg,#5B1A8A,#3D0F6A);}.form-head h2{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:#fff;}.form-head p{color:rgba(255,255,255,0.6);font-size:0.875rem;margin-top:0.3rem;}.form-body{padding:2.5rem;}</style>{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>{{ '✏️ Edit Event' if action=='edit' else '➕ New Event' }}</h2>
+      <p>{{ region.flag if region }} {{ region.name if region }} region · Event will be visible to your region only</p>
+    </div>
+    <div class="form-body">
+      <form method="POST">
+        <div class="form-group"><label class="form-label">Title <span>*</span></label><input type="text" name="title" class="form-input" required value="{{ event.title if event else '' }}"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Type <span>*</span></label><select name="type" class="form-select" required>{% for t in ['Festival','Camp','Wellness','Workshop','Class','Other'] %}<option {% if event and event.type==t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+          <div class="form-group"><label class="form-label">Date <span>*</span></label><input type="date" name="date" class="form-input" required value="{{ event.date if event else '' }}"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Description <span>*</span></label><textarea name="description" class="form-textarea" required>{{ event.description if event else '' }}</textarea></div>
+        <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+          <button type="submit" class="btn btn-lg" style="flex:1;justify-content:center;background:#5B1A8A;color:#fff;">{{ '✅ Save' if action=='edit' else '🎉 Create Event' }}</button>
+          <a href="/radmin/events" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

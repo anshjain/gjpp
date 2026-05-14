@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if action=='edit' else 'New' }} Event - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.sidebar-link:hover,.sidebar-link.active{background:rgba(255,255,255,0.12);color:#fff;}
+.content{padding:2.5rem;display:flex;align-items:flex-start;justify-content:center;}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;width:100%;max-width:680px;box-shadow:var(--shadow-lg);}
+.form-card-header{background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));padding:2rem 2.5rem;}
+.form-card-header h2{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:#fff;}
+.form-card-header p{color:rgba(255,255,255,0.6);font-size:0.875rem;margin-top:0.3rem;}
+.form-body{padding:2.5rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div style="padding:2rem 2.5rem;"><div class="form-card">
+      <div class="form-card-header">
+        <h2>{{ '✏️ Edit Event' if action=='edit' else '➕ Create New Event' }}</h2>
+        <p>{{ 'Update the details for this event.' if action=='edit' else 'Fill in the details to create a new GJPP event.' }}</p>
+      </div>
+      <div class="form-body">
+        <form method="POST">
+          <div class="form-group">
+            <label class="form-label">Event Title <span>*</span></label>
+            <input type="text" name="title" class="form-input" required placeholder="e.g. Paryushan Celebrations 2026" value="{{ event.title if event else '' }}">
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Event Type <span>*</span></label>
+              <select name="type" class="form-select" required>
+                {% for t in ['Festival','Camp','Wellness','Workshop','Class','Other'] %}
+                <option value="{{ t }}" {% if event and event.type==t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date <span>*</span></label>
+              <input type="date" name="date" class="form-input" required value="{{ event.date if event else '' }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Region <span>*</span></label>
+            <select name="region" class="form-select" required>
+              <option value="global" {% if event and event.region=='global' %}selected{% endif %}>🌍 Global (all regions)</option>
+              {% for r in regions %}
+              <option value="{{ r.id }}" {% if event and event.region==r.id %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description <span>*</span></label>
+            <textarea name="description" class="form-textarea" required placeholder="Describe what this event is about…">{{ event.description if event else '' }}</textarea>
+          </div>
+          <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+            <button type="submit" class="btn btn-green btn-lg" style="flex:1;justify-content:center;">
+              {{ '✅ Save Changes' if action=='edit' else '🎉 Create Event' }}
+            </button>
+            <a href="/admin/events" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

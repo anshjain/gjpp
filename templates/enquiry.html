@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Contact Us - GJPP{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <h1>Get in Touch</h1>
+        <p>Have questions about classes, Pathshalas, or how to get involved? We'd love to hear from you.</p>
+    </div>
+</div>
+<div class="container section-sm" style="display:grid;grid-template-columns:1fr 340px;gap:3rem;max-width:1000px;">
+    <div class="card">
+        <form method="POST" style="padding:2rem;">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Name <span style="color:var(--blue);">*</span></label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email <span style="color:var(--blue);">*</span></label>
+                    <input type="email" name="email" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Subject</label>
+                <select name="subject" class="form-select">
+                    <option>Question about classes</option>
+                    <option>Starting a new Pathshala</option>
+                    <option>Volunteer opportunities</option>
+                    <option>Events and camps</option>
+                    <option>Technical support</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Message <span style="color:var(--blue);">*</span></label>
+                <textarea name="message" class="form-textarea" required placeholder="How can we help you?"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Send Message 🙏</button>
+        </form>
+    </div>
+    <div>
+        <div class="card" style="padding:1.75rem;">
+            <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;margin-bottom:1.25rem;">Quick Links</h3>
+            <a href="/register/student" style="display:block;padding:0.75rem 0;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);font-size:0.875rem;transition:color 0.2s;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'">📚 Enroll a Student →</a>
+            <a href="/register/pathshala" style="display:block;padding:0.75rem 0;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);font-size:0.875rem;transition:color 0.2s;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'">🏫 Start a Pathshala →</a>
+            <a href="/register/volunteer" style="display:block;padding:0.75rem 0;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);font-size:0.875rem;transition:color 0.2s;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'">🤝 Volunteer →</a>
+            <a href="/events" style="display:block;padding:0.75rem 0;text-decoration:none;color:var(--text);font-size:0.875rem;transition:color 0.2s;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'">🎉 View Events →</a>
+            <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+                <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;">We typically respond within 24 hours. For urgent matters, WhatsApp messages are fastest. <em>Jai Jinendra 🙏</em></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

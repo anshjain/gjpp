@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Register for {{ event.title }} - GJPP{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <div class="badge badge-saffron" style="margin-bottom:1rem;">🎉 Event Registration</div>
+        <h1>{{ event.title }}</h1>
+        <p>{{ event.date }} · {{ event.region }} · {{ event.type }}</p>
+    </div>
+</div>
+<div class="container section-sm" style="max-width:640px;">
+    <div class="card">
+        <div style="padding:2rem;">
+            <p style="color:var(--text-muted);margin-bottom:2rem;">{{ event.description }}</p>
+            <form method="POST">
+                <div class="form-group">
+                    <label class="form-label">Your Name <span style="color:var(--blue);">*</span></label>
+                    <input type="text" name="name" class="form-input" required placeholder="Full name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email <span style="color:var(--blue);">*</span></label>
+                    <input type="email" name="email" class="form-input" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">WhatsApp Number</label>
+                    <input type="tel" name="whatsapp" class="form-input" placeholder="+1 555 000 0000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Number of Attendees</label>
+                    <select name="attendees" class="form-select">
+                        <option>1</option><option>2</option><option>3</option><option>4</option><option>5+</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Confirm Registration 🙏</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

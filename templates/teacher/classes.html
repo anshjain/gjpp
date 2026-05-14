@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Class Roster - Teacher GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg { padding:2rem 2.5rem; }
+.pg-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:800; color:var(--jain-blue); margin-bottom:0.2rem; }
+.pg-sub   { color:var(--text-muted); font-size:0.875rem; margin-bottom:1.75rem; }
+.class-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1.25rem; }
+.class-card { background:#fff; border:1.5px solid var(--border); border-radius:14px; overflow:hidden; transition:all 0.2s; }
+.class-card:hover { box-shadow:0 6px 24px rgba(13,43,110,0.1); transform:translateY(-2px); }
+.class-card.my-class { border-color:var(--jain-green); box-shadow:0 0 0 2px rgba(26,122,60,0.2); }
+.class-head { padding:1rem 1.25rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.class-id { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; color:var(--jain-blue); }
+.class-body { padding:1rem 1.25rem; }
+.teacher-row { display:flex; align-items:center; gap:0.6rem; padding:0.6rem; background:var(--bg); border-radius:8px; margin-bottom:0.75rem; }
+.teacher-av { width:28px; height:28px; border-radius:50%; background:var(--jain-green); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:800; flex-shrink:0; }
+.student-row { display:flex; align-items:center; justify-content:space-between; padding:0.45rem 0; border-bottom:1px solid var(--border); font-size:0.84rem; }
+.student-row:last-child { border-bottom:none; }
+.student-av { width:24px; height:24px; border-radius:50%; background:var(--jain-blue); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:800; margin-right:0.4rem; flex-shrink:0; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="background:linear-gradient(135deg,var(--jain-green),var(--green-dark));border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+    <div>
+      <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);margin-bottom:0.15rem;">Region Overview</div>
+      <div style="font-size:1rem;font-weight:800;color:#fff;">{{ region.flag if region }} {{ region.name if region }} · All Classes</div>
+    </div>
+    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;color:rgba(255,255,255,0.9);">{{ class_roster|length }} <span style="font-size:0.85rem;font-weight:600;opacity:0.6;">classes</span></div>
+  </div>
+
+  <div class="pg-title">Class Roster</div>
+  <div class="pg-sub">All classes in {{ region.name if region }} with enrolled students and assigned teachers</div>
+
+  <div class="class-grid">
+    {% for class_id, students in class_roster.items()|sort %}
+    {% set teacher = class_teachers.get(class_id) %}
+    {% set is_mine = class_id == user.class_id %}
+    {% set parts = class_id.split('-') %}
+    {% set level_id = parts[1] if parts|length > 1 else '' %}
+    {% set level_obj = None %}
+    {% for l in levels %}{% if l.id == level_id %}{% set level_obj = l %}{% endif %}{% endfor %}
+
+    <div class="class-card {{ 'my-class' if is_mine }}">
+      <div class="class-head">
+        <div>
+          <div class="class-id">{{ class_id }}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.15rem;">{{ level_obj.name if level_obj else level_id }} · {{ level_obj.age if level_obj }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          {% if is_mine %}
+          <span style="background:var(--green-light);color:var(--green-dark);padding:0.2rem 0.6rem;border-radius:100px;font-size:0.68rem;font-weight:800;">MY CLASS</span>
+          {% endif %}
+          <span style="background:var(--blue-light);color:var(--jain-blue);padding:0.2rem 0.6rem;border-radius:100px;font-size:0.72rem;font-weight:800;">{{ students|length }} students</span>
+        </div>
+      </div>
+      <div class="class-body">
+        <!-- Teacher -->
+        {% if teacher %}
+        <div class="teacher-row">
+          <div class="teacher-av">{{ teacher.name[0] }}</div>
+          <div>
+            <div style="font-weight:700;font-size:0.84rem;color:var(--jain-blue);">{{ teacher.name }}</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">📖 Teacher · {{ teacher.city }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div style="padding:0.5rem 0.6rem;background:var(--yellow-light);border-radius:7px;font-size:0.8rem;color:var(--yellow-dark);font-weight:600;margin-bottom:0.75rem;">⚠️ No teacher assigned</div>
+        {% endif %}
+
+        <!-- Students list -->
+        {% if students %}
+        <div>
+          {% for s in students[:5] %}
+          <div class="student-row">
+            <div style="display:flex;align-items:center;">
+              <div class="student-av">{{ s.name[0] }}</div>
+              <span style="font-weight:600;">{{ s.name }}</span>
+            </div>
+            <span style="font-size:0.76rem;color:var(--text-muted);">Age {{ s.age }}</span>
+          </div>
+          {% endfor %}
+          {% if students|length > 5 %}
+          <div style="text-align:center;padding:0.5rem;font-size:0.78rem;color:var(--text-muted);font-weight:600;">+{{ students|length - 5 }} more students</div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.85rem;">No students enrolled yet</div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div style="grid-column:span 2;text-align:center;padding:4rem;background:#fff;border:1.5px solid var(--border);border-radius:14px;">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">📋</div>
+      <div style="font-weight:700;color:var(--jain-blue);">No classes found in your region</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

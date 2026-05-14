@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ region.name if region }} Events - GJPP{% endblock %}
+{% block extra_css %}<style>.pg{padding:2rem 2.5rem;}.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}.ev-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;}.ev-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;transition:all 0.2s;}.ev-card:hover{box-shadow:0 6px 22px rgba(91,26,138,0.1);transform:translateY(-2px);}.ev-top{padding:1.25rem;border-top:4px solid #5B1A8A;}.ev-foot{padding:0.75rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;background:var(--bg);}</style>{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div class="pg-title">Events — {{ region.name if region }}</div>
+      <div class="pg-sub">{{ events|length }} event{{ 's' if events|length != 1 }} in your region</div>
+    </div>
+    <a href="/radmin/events/new" class="btn btn-green btn-lg">+ Create Event</a>
+  </div>
+  {% if events %}
+  <div class="ev-grid">
+    {% for e in events %}
+    <div class="ev-card">
+      <div class="ev-top">
+        <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#5B1A8A;margin-bottom:0.4rem;">{{ e.type }}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.35rem;">{{ e.title }}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">📅 {{ e.date }}</div>
+        <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.5;">{{ e.description }}</p>
+      </div>
+      <div class="ev-foot">
+        {% if e.region != 'global' %}
+        <a href="/radmin/events/{{ e.id }}/edit" class="btn btn-blue" style="font-size:0.78rem;padding:0.35rem 0.8rem;">✏️ Edit</a>
+        <form method="POST" action="/radmin/events/{{ e.id }}/delete" onsubmit="return confirm('Delete this event?')">
+          <button type="submit" class="btn btn-red" style="font-size:0.78rem;padding:0.35rem 0.8rem;">🗑 Delete</button>
+        </form>
+        {% else %}
+        <span style="font-size:0.75rem;color:var(--text-muted);padding:0.35rem 0;">🌍 Global event (read-only)</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:4rem;background:#fff;border:1.5px solid var(--border);border-radius:14px;">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">📅</div>
+    <div style="font-weight:700;color:var(--jain-blue);">No events yet</div>
+    <a href="/radmin/events/new" class="btn btn-green" style="margin-top:1rem;">+ Create First Event</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

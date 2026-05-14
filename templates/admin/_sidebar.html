@@ -1,0 +1,45 @@
+{% macro admin_sidebar(user, active='dashboard', pending_count=0) %}
+<style>
+.sidebar{background:var(--jain-blue);padding:2rem 0;position:sticky;top:71px;height:calc(100vh - 71px);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar-inner{flex:1;}
+.sidebar-label{font-size:0.62rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.32);padding:0.75rem 1.5rem 0.35rem;}
+.sidebar-link{display:flex;align-items:center;gap:0.7rem;padding:0.6rem 1rem;margin:0 0.6rem 0.1rem;border-radius:8px;color:rgba(255,255,255,0.65);text-decoration:none;font-size:0.855rem;font-weight:700;transition:all 0.18s;}
+.sidebar-link:hover,.sidebar-link.active{background:rgba(255,255,255,0.12);color:#fff;}
+.sidebar-link .icon{font-size:0.95rem;width:20px;text-align:center;flex-shrink:0;}
+.sidebar-badge{margin-left:auto;background:var(--jain-red);color:#fff;font-size:0.62rem;font-weight:800;padding:0.12rem 0.45rem;border-radius:100px;min-width:18px;text-align:center;}
+.sidebar-footer{padding:1.25rem 1.5rem;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto;}
+</style>
+<nav class="sidebar">
+  <div class="sidebar-inner">
+    <div style="padding:0 1.5rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:0.5rem;">
+      <div style="font-size:0.68rem;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Admin Portal</div>
+      <div style="font-weight:800;color:#fff;font-size:0.92rem;margin-bottom:0.1rem;">{{ user.name }}</div>
+      <div style="font-size:0.7rem;color:var(--jain-yellow);font-weight:700;">Administrator</div>
+    </div>
+
+    <div class="sidebar-label">Overview</div>
+    <a href="/admin" class="sidebar-link {{ 'active' if active=='dashboard' }}"><span class="icon">📊</span> Dashboard</a>
+
+    <div class="sidebar-label">People</div>
+    <a href="/admin/students"   class="sidebar-link {{ 'active' if active=='students' }}">  <span class="icon">🎓</span> Students</a>
+    <a href="/admin/teachers"   class="sidebar-link {{ 'active' if active=='teachers' }}">  <span class="icon">📖</span> Teachers</a>
+    <a href="/admin/volunteers" class="sidebar-link {{ 'active' if active=='volunteers' }}"><span class="icon">🤝</span> Volunteers</a>
+
+    <div class="sidebar-label">Content</div>
+    <a href="/admin/events" class="sidebar-link {{ 'active' if active=='events' }}"><span class="icon">📅</span> Events</a>
+    <a href="/classes"      class="sidebar-link"><span class="icon">📚</span> Curriculum</a>
+
+    <div class="sidebar-label">Admin</div>
+    <a href="/admin/location-requests" class="sidebar-link {{ 'active' if active=='location_requests' }}">
+      <span class="icon">📍</span> Location Requests
+      {% if pending_count > 0 %}<span class="sidebar-badge">{{ pending_count }}</span>{% endif %}
+    </a>
+    <a href="/enquiry" class="sidebar-link"><span class="icon">✉️</span> Enquiries</a>
+  </div>
+  <div class="sidebar-footer">
+    <a href="/logout" style="display:flex;align-items:center;gap:0.6rem;color:rgba(255,255,255,0.45);text-decoration:none;font-size:0.84rem;font-weight:700;transition:color 0.18s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">
+      🚪 Sign Out
+    </a>
+  </div>
+</nav>
+{% endmacro %}

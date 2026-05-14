@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ region.name if region }} Teachers - GJPP{% endblock %}
+{% block extra_css %}<style>.pg{padding:2rem 2.5rem;}.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}.sc-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}.sc-head h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);}.av{width:32px;height:32px;border-radius:50%;background:#5B1A8A;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;margin-right:0.5rem;}</style>{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="background:linear-gradient(135deg,#5B1A8A,#3D0F6A);border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:1rem;font-weight:800;color:#fff;">{{ region.flag if region }} {{ region.name if region }} · Teachers</div>
+    <span style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:rgba(255,255,255,0.9);">{{ teachers|length }}</span>
+  </div>
+  <div class="pg-title">Teachers — {{ region.name if region }}</div>
+  <div class="pg-sub">All teachers assigned to your region</div>
+  <div class="sc">
+    <div class="sc-head"><h3>{{ teachers|length }} Teacher{{ 's' if teachers|length != 1 }}</h3></div>
+    <table class="tbl">
+      <thead><tr><th>Teacher</th><th>Email</th><th>City</th><th>Class</th><th>Students</th></tr></thead>
+      <tbody>
+        {% for t in teachers %}
+        {% set my_students = students|selectattr('class_id','eq',t.class_id)|list if t.class_id else [] %}
+        <tr>
+          <td><div style="display:flex;align-items:center;"><div class="av">{{ t.name[0] }}</div><strong>{{ t.name }}</strong></div></td>
+          <td style="font-size:0.82rem;color:var(--text-mid);">{{ t.email }}</td>
+          <td>{{ t.city }}</td>
+          <td><span class="tag tag-blue" style="font-size:0.68rem;">{{ t.class_id or '—' }}</span></td>
+          <td><span style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:800;color:#5B1A8A;">{{ my_students|length }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center;padding:3rem;color:var(--text-muted);">No teachers in your region.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Classes & Curriculum - GJPP{% endblock %}
+
+{% block extra_css %}
+<style>
+.levels-hero {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    margin-bottom: 4rem;
+}
+
+.level-hero-card {
+    border-radius: 16px;
+    padding: 1.75rem 1.25rem;
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.level-hero-card:hover { transform: translateY(-4px); }
+
+.level-hero-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.15);
+}
+
+.level-hero-card * { position: relative; }
+
+.level-hero-card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+.level-hero-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; margin-bottom: 0.25rem; }
+.level-hero-card p { font-size: 0.78rem; opacity: 0.8; }
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.schedule-table th {
+    background: var(--navy);
+    color: rgba(255,255,255,0.7);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.75rem 1.25rem;
+    text-align: left;
+}
+
+.schedule-table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+.schedule-table tr:last-child td { border-bottom: none; }
+.schedule-table tr:hover td { background: rgba(232,101,26,0.03); }
+
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.5rem; }
+
+.curriculum-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.curriculum-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.75rem;
+    border-left: 4px solid;
+}
+
+.curriculum-card h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    margin-bottom: 0.25rem;
+}
+
+.curriculum-card .age-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.curriculum-card ul {
+    list-style: none;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+}
+
+.curriculum-card ul li::before {
+    content: '✦ ';
+    color: var(--blue);
+}
+
+@media (max-width: 768px) {
+    .levels-hero { grid-template-columns: 1fr 1fr; }
+    .curriculum-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-inner">
+        <div class="badge badge-gold" style="margin-bottom:1rem;">📚 Curriculum</div>
+        <h1>Classes & Learning Levels</h1>
+        <p>Structured Jain education from ages 3 to 99. Each level builds on the last, guiding students through a complete journey from foundational values to deep philosophical study.</p>
+    </div>
+</div>
+
+<div class="container section">
+    <!-- Level Cards -->
+    <div class="levels-hero">
+        <div class="level-hero-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);" id="beginner">
+            <div class="icon">🌱</div>
+            <h3>Beginner</h3>
+            <p>Ages 3–6</p>
+        </div>
+        <div class="level-hero-card" style="background: linear-gradient(135deg, #10b981, #059669);" id="level1">
+            <div class="icon">🌿</div>
+            <h3>Level 1</h3>
+            <p>Ages 6–8</p>
+        </div>
+        <div class="level-hero-card" style="background: linear-gradient(135deg, #3b82f6, #2563eb);" id="level2">
+            <div class="icon">🌳</div>
+            <h3>Level 2</h3>
+            <p>Ages 8–12</p>
+        </div>
+        <div class="level-hero-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);" id="level3">
+            <div class="icon">🏔️</div>
+            <h3>Level 3+</h3>
+            <p>Ages 12+</p>
+        </div>
+        <div class="level-hero-card" style="background: linear-gradient(135deg, #ec4899, #db2777);" id="adult">
+            <div class="icon">🕉️</div>
+            <h3>Adult Track</h3>
+            <p>Ages 18+</p>
+        </div>
+    </div>
+
+    <!-- Schedule -->
+    <div style="margin-bottom:4rem;">
+        <div class="section-label">Weekly Schedule</div>
+        <h2 class="section-title" style="margin-bottom:2rem;">Global Class Schedule</h2>
+        <div class="card">
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Level</th>
+                        <th>Region</th>
+                        <th>Day & Time (Local)</th>
+                        <th>Format</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set schedules = [
+                        ("Beginner", "#f59e0b", "North America 🇺🇸", "Sunday 10:00 AM EST", "Online"),
+                        ("Level 1", "#10b981", "North America 🇺🇸", "Sunday 11:00 AM EST", "Online"),
+                        ("Level 2", "#3b82f6", "North America 🇺🇸", "Sunday 12:00 PM EST", "Online"),
+                        ("Level 3+", "#8b5cf6", "North America 🇺🇸", "Saturday 9:00 AM EST", "Online"),
+                        ("Beginner", "#f59e0b", "UK 🇬🇧", "Sunday 10:00 AM GMT", "Online + In-person"),
+                        ("Level 1", "#10b981", "UK 🇬🇧", "Sunday 11:30 AM GMT", "Online"),
+                        ("Level 2", "#3b82f6", "Europe 🇪🇺", "Saturday 10:00 AM CET", "Online"),
+                        ("Beginner", "#f59e0b", "India 🇮🇳", "Sunday 9:00 AM IST", "In-person + Online"),
+                        ("Adult Track", "#ec4899", "India 🇮🇳", "Sunday 7:00 AM IST", "Online"),
+                        ("Beginner", "#f59e0b", "Australia 🇦🇺", "Sunday 10:00 AM AEST", "Online"),
+                        ("Level 1", "#10b981", "Australia 🇦🇺", "Sunday 11:00 AM AEST", "Online"),
+                    ] %}
+                    {% for level, color, region, time, format in schedules %}
+                    <tr>
+                        <td><span class="dot" style="background:{{ color }};"></span><strong>{{ level }}</strong></td>
+                        <td>{{ region }}</td>
+                        <td>{{ time }}</td>
+                        <td><span class="badge badge-saffron">{{ format }}</span></td>
+                        <td><a href="/register/student" class="btn btn-primary" style="font-size:0.8rem;padding:0.4rem 0.9rem;">Enroll →</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Curriculum Detail -->
+    <div>
+        <div class="section-label">What We Teach</div>
+        <h2 class="section-title" style="margin-bottom:2rem;">Curriculum Overview</h2>
+        <div class="curriculum-grid">
+            <div class="curriculum-card" style="border-left-color:#f59e0b;">
+                <h3>Beginner (Ages 3–6)</h3>
+                <span class="age-tag" style="background:rgba(245,158,11,0.1);color:#92400e;">Foundation</span>
+                <ul>
+                    <li>Navkar Mantra — introduction & recitation</li>
+                    <li>Jain moral stories & values</li>
+                    <li>Simple prayers and songs</li>
+                    <li>Ahimsa — non-violence in daily life</li>
+                    <li>Basic Jain symbols and their meaning</li>
+                </ul>
+            </div>
+            <div class="curriculum-card" style="border-left-color:#10b981;">
+                <h3>Level 1 (Ages 6–8)</h3>
+                <span class="age-tag" style="background:rgba(16,185,129,0.1);color:#065f46;">Exploration</span>
+                <ul>
+                    <li>24 Tirthankars — names and stories</li>
+                    <li>Jain calendar and festivals</li>
+                    <li>Five major vows (Pancha Mahavrata)</li>
+                    <li>Ashtami & Chaturdashi observances</li>
+                    <li>Introduction to Jain geography & places</li>
+                </ul>
+            </div>
+            <div class="curriculum-card" style="border-left-color:#3b82f6;">
+                <h3>Level 2 (Ages 8–12)</h3>
+                <span class="age-tag" style="background:rgba(59,130,246,0.1);color:#1e40af;">Understanding</span>
+                <ul>
+                    <li>Jain history and key figures</li>
+                    <li>Nine Tattvas (fundamental principles)</li>
+                    <li>Samayik — practice and meaning</li>
+                    <li>Karma theory — introduction</li>
+                    <li>Stories from Agam scriptures</li>
+                </ul>
+            </div>
+            <div class="curriculum-card" style="border-left-color:#8b5cf6;">
+                <h3>Level 3+ (Ages 12+)</h3>
+                <span class="age-tag" style="background:rgba(139,92,246,0.1);color:#5b21b6;">Deep Dive</span>
+                <ul>
+                    <li>Advanced Agam study (Uttaradhyayana, etc.)</li>
+                    <li>Jain ethics and modern application</li>
+                    <li>Six Substances (Shad Dravya)</li>
+                    <li>Comparative philosophy</li>
+                    <li>Debate and critical thinking in dharma</li>
+                </ul>
+            </div>
+            <div class="curriculum-card" style="border-left-color:#ec4899;grid-column:span 2;">
+                <h3>Adult Track (Ages 18+)</h3>
+                <span class="age-tag" style="background:rgba(236,72,153,0.1);color:#9d174d;">Spiritual Practice</span>
+                <ul>
+                    <li>Bhawna Yog — guided meditation and reflection</li>
+                    <li>Tattvagyan — deep philosophical inquiry</li>
+                    <li>Jain cosmology and metaphysics</li>
+                    <li>Historical analysis of Agam texts</li>
+                    <li>Community leadership and volunteer development</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align:center;margin-top:4rem;">
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:2rem;margin-bottom:1rem;">Ready to start learning?</h2>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+            <a href="/register/student" class="btn btn-primary btn-lg">Enroll Now →</a>
+            <a href="/enquiry" class="btn btn-outline btn-lg">Ask a Question</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

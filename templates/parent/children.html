@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}My Children - Parent GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg { padding:2rem 2.5rem; }
+.pg-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:800; color:var(--jain-blue); margin-bottom:0.2rem; }
+.pg-sub   { color:var(--text-muted); font-size:0.875rem; margin-bottom:1.75rem; }
+.children-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1.5rem; }
+.child-card { background:#fff; border:1.5px solid var(--border); border-radius:16px; overflow:hidden; transition:all 0.2s; }
+.child-card:hover { box-shadow:0 8px 28px rgba(200,16,46,0.1); transform:translateY(-2px); border-color:var(--jain-red); }
+.child-top { padding:1.5rem; border-bottom:1px solid var(--border); border-top:4px solid var(--jain-red); }
+.child-av { width:52px; height:52px; border-radius:50%; background:var(--jain-red); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:1.4rem; font-weight:800; }
+.level-pill { display:inline-flex; padding:0.2rem 0.65rem; border-radius:100px; font-size:0.7rem; font-weight:800; background:var(--red-light); color:var(--red-dark); }
+.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.35rem 1rem; font-size:0.82rem; }
+.info-lbl { color:var(--text-muted); font-weight:600; }
+.info-val { color:var(--jain-blue); font-weight:700; }
+.teacher-box { padding:1.25rem; background:var(--green-light); border-top:1px solid rgba(26,122,60,0.15); }
+.teacher-box h4 { font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:var(--green-dark); margin-bottom:0.6rem; }
+.teacher-row { display:flex; align-items:center; gap:0.65rem; }
+.teacher-av { width:34px; height:34px; border-radius:50%; background:var(--jain-green); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:800; flex-shrink:0; }
+.no-teacher { font-size:0.82rem; color:var(--yellow-dark); background:var(--yellow-light); padding:0.6rem 0.75rem; border-radius:7px; font-weight:600; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="background:linear-gradient(135deg,var(--jain-red),var(--red-dark));border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+    <div>
+      <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);margin-bottom:0.15rem;">Your Family</div>
+      <div style="font-size:1rem;font-weight:800;color:#fff;">{{ region.flag if region }} {{ region.name if region }} · {{ user.city }}, {{ user.country }}</div>
+    </div>
+    <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;color:rgba(255,255,255,0.9);">{{ children|length }} <span style="font-size:0.85rem;font-weight:600;opacity:0.6;">{{ 'child' if children|length==1 else 'children' }}</span></div>
+  </div>
+
+  <div class="pg-title">My Children</div>
+  <div class="pg-sub">Enrolled children with their class and teacher details</div>
+
+  {% if children %}
+  <div class="children-grid">
+    {% for child in children %}
+    {% set teacher = child_teachers.get(child.id) %}
+    <div class="child-card">
+      <div class="child-top">
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+          <div class="child-av">{{ child.name[0] }}</div>
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);">{{ child.name }}</div>
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.25rem;">
+              <span class="level-pill">{{ child.level }}</span>
+              <span style="font-size:0.78rem;color:var(--text-muted);">Age {{ child.age }} · {{ child.gender }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="info-grid">
+          <span class="info-lbl">Class ID</span>
+          <span class="info-val" style="font-size:0.78rem;">{{ child.class_id or '—' }}</span>
+          <span class="info-lbl">Region</span>
+          <span class="info-val">{{ region_label(child.region) }}</span>
+          <span class="info-lbl">City</span>
+          <span class="info-val">{{ child.city }}</span>
+          <span class="info-lbl">Enrolled</span>
+          <span class="info-val">{{ child.registered_at }}</span>
+        </div>
+      </div>
+      <div class="teacher-box">
+        <h4>📖 Class Teacher</h4>
+        {% if teacher %}
+        <div class="teacher-row">
+          <div class="teacher-av">{{ teacher.name[0] }}</div>
+          <div>
+            <div style="font-weight:800;color:var(--green-dark);font-size:0.9rem;">{{ teacher.name }}</div>
+            <div style="font-size:0.74rem;color:var(--green-dark);opacity:0.7;">{{ teacher.city }}, {{ teacher.country }}</div>
+            <div style="font-size:0.72rem;color:var(--green-dark);opacity:0.65;margin-top:0.1rem;">📱 {{ teacher.phone or teacher.email }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div class="no-teacher">⚠️ Teacher not yet assigned for this class</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:4rem 2rem;background:#fff;border:1.5px solid var(--border);border-radius:14px;">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">👶</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.5rem;">No children enrolled yet</div>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:1.5rem;">Enroll your child to start their Jain education journey.</p>
+    <a href="/register/student" class="btn btn-red btn-lg">Enroll a Child →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

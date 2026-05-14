@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Location Requests - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.sidebar-link:hover,.sidebar-link.active{background:rgba(255,255,255,0.12);color:#fff;}
+.content{padding:2.5rem;}
+.page-title{font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.25rem;}
+.page-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:2rem;}
+.req-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1rem;}
+.req-header{padding:1.25rem 1.5rem;display:flex;align-items:center;gap:1rem;border-bottom:1px solid var(--border);}
+.req-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:#fff;flex-shrink:0;}
+.req-body{padding:1.25rem 1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+.loc-box{background:var(--bg);border-radius:10px;padding:1rem;}
+.loc-box h4{font-size:0.72rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.6rem;}
+.loc-box .loc-item{font-size:0.875rem;color:var(--text-mid);margin-bottom:0.2rem;}
+.req-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);}
+.status-tag{display:inline-flex;align-items:center;gap:0.4rem;padding:0.25rem 0.75rem;border-radius:100px;font-size:0.75rem;font-weight:800;}
+.status-pending{background:var(--yellow-light);color:var(--yellow-dark);}
+.status-approved{background:var(--green-light);color:var(--green-dark);}
+.status-rejected{background:var(--red-light);color:var(--red-dark);}
+</style>
+{% endblock %}
+{% block content %}
+<div style="padding:2rem 2.5rem;"><div class="page-title">Location Update Requests</div>
+    <div class="page-sub">Review and approve/reject location change requests from teachers and parents.</div>
+
+    {% if not requests %}
+    <div style="text-align:center;padding:5rem 2rem;background:#fff;border:1.5px solid var(--border);border-radius:16px;">
+      <div style="font-size:3rem;margin-bottom:1rem;">📍</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.5rem;">No requests yet</div>
+      <p style="color:var(--text-muted);">Location update requests from teachers and parents will appear here.</p>
+    </div>
+    {% else %}
+    {% for req in requests|sort(attribute='submitted_at', reverse=True) %}
+    <div class="req-card">
+      <div class="req-header">
+        <div class="req-avatar" style="background:{{ '#0D2B6E' if req.user_role=='teacher' else '#C8102E' }};">
+          {{ req.user_name[0] }}
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:800;color:var(--jain-blue);">{{ req.user_name }}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);">{{ req.user_email }} · {{ req.user_role|title }}</div>
+        </div>
+        <div>
+          <span class="status-tag status-{{ req.status }}">
+            {{ '⏳' if req.status=='pending' else ('✅' if req.status=='approved' else '✕') }}
+            {{ req.status|title }}
+          </span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text-muted);">{{ req.submitted_at[:10] }}</div>
+      </div>
+
+      <div class="req-body">
+        <div class="loc-box" style="border-left:3px solid var(--jain-red);">
+          <h4 style="color:var(--jain-red);">Current Location</h4>
+          <div class="loc-item">🌍 {{ region_label(req.old_region) }}</div>
+          <div class="loc-item">🏳️ {{ req.old_country }}</div>
+          <div class="loc-item">🏙️ {{ req.old_city }}</div>
+        </div>
+        <div class="loc-box" style="border-left:3px solid var(--jain-green);">
+          <h4 style="color:var(--jain-green);">Requested Location</h4>
+          <div class="loc-item">🌍 {{ region_label(req.new_region) }}</div>
+          <div class="loc-item">🏳️ {{ req.new_country }}</div>
+          <div class="loc-item">🏙️ {{ req.new_city }}</div>
+        </div>
+      </div>
+
+      {% if req.reason %}
+      <div style="padding:0 1.5rem 1rem;">
+        <div style="background:var(--blue-light);border-radius:8px;padding:0.75rem 1rem;font-size:0.875rem;color:var(--text-mid);">
+          <strong>Reason:</strong> {{ req.reason }}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if req.status == 'pending' %}
+      <div class="req-footer">
+        <span style="font-size:0.8rem;color:var(--text-muted);">Awaiting your review</span>
+        <div style="display:flex;gap:0.6rem;">
+          <form method="POST" action="/admin/location-requests/{{ req.id }}/approve">
+            <button type="submit" class="btn btn-green" style="font-size:0.82rem;padding:0.45rem 1.1rem;">✅ Approve</button>
+          </form>
+          <form method="POST" action="/admin/location-requests/{{ req.id }}/reject">
+            <button type="submit" class="btn btn-red" style="font-size:0.82rem;padding:0.45rem 1.1rem;">✕ Reject</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="req-footer">
+        <span style="font-size:0.8rem;color:var(--text-muted);">Reviewed {{ req.reviewed_at[:10] if req.reviewed_at else '' }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

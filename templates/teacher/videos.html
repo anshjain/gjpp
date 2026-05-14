@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Student Videos - Teacher GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:2rem 2.5rem;}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}
+.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}
+.vid-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;margin-bottom:2rem;}
+.vid-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;transition:all 0.2s;}
+.vid-card:hover{border-color:var(--jain-blue);box-shadow:0 6px 22px rgba(13,43,110,0.1);}
+.vid-thumb{height:120px;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));display:flex;align-items:center;justify-content:center;font-size:3rem;}
+.vid-body{padding:1rem;}
+.vid-title{font-weight:700;font-size:0.9rem;color:var(--jain-blue);margin-bottom:0.25rem;}
+.vid-meta{font-size:0.75rem;color:var(--text-muted);}
+.vid-foot{padding:0.65rem 1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg);}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.sc-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div class="pg-title">Student Activity Videos</div>
+      <div class="pg-sub">{{ videos|length }} video{{ 's' if videos|length != 1 }} submitted by your students</div>
+    </div>
+    <a href="/teacher/video-requests" class="btn btn-green">+ New Video Request</a>
+  </div>
+
+  {% if videos %}
+  <div class="vid-grid">
+    {% for v in videos|sort(attribute='uploaded_at',reverse=True) %}
+    <div class="vid-card">
+      <div class="vid-thumb">🎬</div>
+      <div class="vid-body">
+        <div class="vid-title">{{ v.title }}</div>
+        <div class="vid-meta">By {{ v.student_name }}</div>
+        <div class="vid-meta">📅 {{ v.uploaded_at }}</div>
+        {% if v.description %}<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.35rem;line-height:1.4;">{{ v.description }}</div>{% endif %}
+      </div>
+      <div class="vid-foot">
+        <span style="font-size:0.72rem;color:var(--text-muted);">{{ v.video_url }}</span>
+        <span class="tag tag-green" style="font-size:0.68rem;">Submitted</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:4rem 2rem;background:#fff;border:1.5px solid var(--border);border-radius:14px;margin-bottom:2rem;">
+    <div style="font-size:3rem;margin-bottom:1rem;">📹</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.5rem;">No videos yet</div>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:1.25rem;">Send a video request to your students to get started.</p>
+    <a href="/teacher/video-requests" class="btn btn-green">Send Video Request →</a>
+  </div>
+  {% endif %}
+
+  <!-- Pending requests summary -->
+  {% set pending = requests|selectattr('status','eq','pending')|list %}
+  {% if pending %}
+  <div class="sc">
+    <div class="sc-head">
+      <h3>⏳ {{ pending|length }} Pending Request{{ 's' if pending|length != 1 }}</h3>
+      <a href="/teacher/video-requests" class="btn btn-outline-blue" style="font-size:0.78rem;padding:0.38rem 0.85rem;">Manage →</a>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Student</th><th>Topic</th><th>Due Date</th></tr></thead>
+      <tbody>
+        {% for r in pending %}
+        <tr>
+          <td><strong>{{ r.student_name }}</strong></td>
+          <td style="font-size:0.85rem;">{{ r.topic }}</td>
+          <td style="font-size:0.78rem;color:var(--text-muted);">{{ r.due_date or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

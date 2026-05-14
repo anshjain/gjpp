@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.content{padding:2.5rem;background:var(--bg);}
+.page-title{font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}
+.page-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:2rem;}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:2rem;}
+.stat-box{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.35rem 1.25rem;position:relative;overflow:hidden;text-decoration:none;display:block;transition:all 0.2s;}
+.stat-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+.stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;}
+.stat-box.blue::before{background:var(--jain-blue);}
+.stat-box.red::before{background:var(--jain-red);}
+.stat-box.yellow::before{background:var(--jain-yellow);}
+.stat-box.green::before{background:var(--jain-green);}
+.stat-box.white::before{background:var(--border);}
+.s-num{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:800;color:var(--jain-blue);line-height:1;}
+.s-lbl{font-size:0.74rem;font-weight:700;color:var(--text-muted);margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.05em;}
+.s-icon{font-size:1.5rem;margin-bottom:0.5rem;}
+.section-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:1.5rem;}
+.section-card-header{padding:1.2rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.section-card-header h3{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--jain-blue);}
+.table{width:100%;border-collapse:collapse;}
+.table th{background:var(--jain-blue);color:rgba(255,255,255,0.8);font-size:0.7rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:0.7rem 1rem;text-align:left;}
+.table td{padding:0.85rem 1rem;border-bottom:1px solid var(--border);font-size:0.875rem;vertical-align:middle;}
+.table tr:last-child td{border-bottom:none;}
+.table tr:hover td{background:rgba(13,43,110,0.025);}
+.tag{display:inline-flex;align-items:center;padding:0.18rem 0.6rem;border-radius:100px;font-size:0.7rem;font-weight:800;}
+.tag-blue{background:var(--blue-light);color:var(--jain-blue);}
+.tag-green{background:var(--green-light);color:var(--green-dark);}
+.tag-yellow{background:var(--yellow-light);color:var(--yellow-dark);}
+.tag-red{background:var(--red-light);color:var(--red-dark);}
+.pending-alert{background:linear-gradient(135deg,var(--jain-red),var(--red-dark));color:#fff;border-radius:12px;padding:1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;text-decoration:none;}
+.pending-alert .pa-num{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:800;flex-shrink:0;}
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+.qa-btn{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.1rem;display:flex;align-items:center;gap:0.75rem;text-decoration:none;color:var(--jain-blue);font-weight:700;font-size:0.875rem;transition:all 0.2s;}
+.qa-btn:hover{border-color:var(--jain-blue);box-shadow:0 4px 16px rgba(13,43,110,0.12);transform:translateY(-2px);}
+.qa-btn .qa-icon{font-size:1.5rem;flex-shrink:0;}
+</style>
+{% endblock %}
+{% block content %}
+{% set pending_count = pending_requests|length %}
+<div style="padding:2rem 2.5rem;"><!-- Welcome banner -->
+    <div style="background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));border-radius:16px;padding:1.75rem 2rem;margin-bottom:1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div style="display:flex;align-items:center;gap:1.25rem;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--jain-yellow);color:var(--jain-blue);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:800;flex-shrink:0;">{{ user.name[0].upper() }}</div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:800;color:#fff;">Welcome back, {{ user.name.split()[0] }}!</div>
+          <div style="font-size:0.82rem;color:rgba(255,255,255,0.55);margin-top:0.1rem;">Administrator · Global Jain Pramanik Pathshala</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:0.2rem;">Region</div>
+          <div style="font-size:0.9rem;font-weight:800;color:var(--jain-yellow);">{{ region_label(user.region) }}</div>
+        </div>
+        <div style="width:1px;height:32px;background:rgba(255,255,255,0.15);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:0.2rem;">Country</div>
+          <div style="font-size:0.9rem;font-weight:800;color:#fff;">{{ user.country }}</div>
+        </div>
+        <div style="width:1px;height:32px;background:rgba(255,255,255,0.15);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:0.2rem;">City</div>
+          <div style="font-size:0.9rem;font-weight:800;color:#fff;">{{ user.city }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-sub">Global Jain Pramanik Pathshala · Platform Overview</div>
+
+    {% if pending_requests %}
+    <a href="/admin/location-requests" class="pending-alert">
+      <div class="pa-num">{{ pending_requests|length }}</div>
+      <div>
+        <strong style="font-size:1rem;">Pending Location Request{{ 's' if pending_requests|length > 1 }}</strong>
+        <p style="opacity:0.75;font-size:0.85rem;margin-top:0.15rem;">Teacher/parent location changes awaiting your approval.</p>
+      </div>
+      <div style="margin-left:auto;font-weight:700;font-size:0.9rem;">Review →</div>
+    </a>
+    {% endif %}
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <a href="/admin/students" class="stat-box blue">
+        <div class="s-icon">🎓</div>
+        <div class="s-num">{{ total_students }}</div>
+        <div class="s-lbl">Students</div>
+      </a>
+      <a href="/admin/teachers" class="stat-box red">
+        <div class="s-icon">📖</div>
+        <div class="s-num">{{ total_teachers }}</div>
+        <div class="s-lbl">Teachers</div>
+      </a>
+      <a href="/admin/volunteers" class="stat-box yellow">
+        <div class="s-icon">🤝</div>
+        <div class="s-num">{{ total_volunteers }}</div>
+        <div class="s-lbl">Volunteers</div>
+      </a>
+      <a href="/admin/events" class="stat-box green">
+        <div class="s-icon">📅</div>
+        <div class="s-num">{{ events|length }}</div>
+        <div class="s-lbl">Events</div>
+      </a>
+      <div class="stat-box white">
+        <div class="s-icon">📍</div>
+        <div class="s-num">{{ pending_count }}</div>
+        <div class="s-lbl">Pending Requests</div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <a href="/admin/students/new" class="qa-btn"><span class="qa-icon">🎓</span><span>Add Student</span></a>
+      <a href="/admin/teachers/new" class="qa-btn"><span class="qa-icon">📖</span><span>Add Teacher</span></a>
+      <a href="/admin/volunteers/new" class="qa-btn"><span class="qa-icon">🤝</span><span>Add Volunteer</span></a>
+      <a href="/admin/events/new" class="qa-btn"><span class="qa-icon">📅</span><span>Create Event</span></a>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+      <!-- Recent Students -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h3>Recent Students</h3>
+          <a href="/admin/students" class="btn btn-blue" style="font-size:0.78rem;padding:0.4rem 0.9rem;">View All →</a>
+        </div>
+        <table class="table">
+          <thead><tr><th>Name</th><th>Level</th><th>Region</th><th>Enrolled</th></tr></thead>
+          <tbody>
+            {% for s in students[-5:]|reverse %}
+            <tr>
+              <td><strong>{{ s.name }}</strong><div style="font-size:0.72rem;color:var(--text-muted);">{{ s.parent1_name }}</div></td>
+              <td><span class="tag tag-blue">{{ s.level }}</span></td>
+              <td>{{ region_label(s.region) }}</td>
+              <td style="color:var(--text-muted);font-size:0.78rem;">{{ s.registered_at }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Teachers -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h3>Teachers</h3>
+          <a href="/admin/teachers" class="btn btn-red" style="font-size:0.78rem;padding:0.4rem 0.9rem;">View All →</a>
+        </div>
+        <table class="table">
+          <thead><tr><th>Name</th><th>Region</th><th>Class</th></tr></thead>
+          <tbody>
+            {% for t in users.values() if t.role == 'teacher' %}
+            <tr>
+              <td><strong>{{ t.name }}</strong><div style="font-size:0.72rem;color:var(--text-muted);">{{ t.email }}</div></td>
+              <td>{{ region_label(t.region) }}</td>
+              <td style="font-size:0.78rem;color:var(--text-muted);">{{ t.class_id or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Upcoming Events -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h3>Events</h3>
+          <a href="/admin/events/new" class="btn btn-green" style="font-size:0.78rem;padding:0.4rem 0.9rem;">+ New</a>
+        </div>
+        <table class="table">
+          <thead><tr><th>Title</th><th>Type</th><th>Date</th><th></th></tr></thead>
+          <tbody>
+            {% for e in events %}
+            <tr>
+              <td><strong>{{ e.title }}</strong></td>
+              <td><span class="tag tag-yellow">{{ e.type }}</span></td>
+              <td style="font-size:0.78rem;color:var(--text-muted);">{{ e.date }}</td>
+              <td><a href="/admin/events/{{ e.id }}/edit" style="font-size:0.78rem;color:var(--jain-blue);font-weight:700;">Edit</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Volunteers -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <h3>Recent Volunteers</h3>
+          <a href="/admin/volunteers" class="btn btn-yellow" style="font-size:0.78rem;padding:0.4rem 0.9rem;">View All →</a>
+        </div>
+        <table class="table">
+          <thead><tr><th>Name</th><th>Region</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for v in volunteers[-5:]|reverse %}
+            <tr>
+              <td><strong>{{ v.name }}</strong><div style="font-size:0.72rem;color:var(--text-muted);">{{ v.email }}</div></td>
+              <td>{{ region_label(v.region) }}</td>
+              <td><span class="tag {{ 'tag-green' if v.status=='active' else 'tag-red' }}">{{ v.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

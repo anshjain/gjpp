@@ -347,8 +347,48 @@
             /* Nav */
             .hamburger { display:flex; }
             .topnav-logo .ltext .sub { display:none; }
-            .topnav-right .nav-pill.ghost:not(.user-pill),
-            .topnav-right .nav-pill.loc { display:none; }
+            /* Hide secondary logged-in pills; keep guest pills */
+            .topnav-right .nav-pill.loc,
+            .topnav-right .nav-pill.ghost.user-pill { display:none; }
+            /* Hide some guest pills to save space; keep Login + Enroll */
+            .topnav-right .nav-pill.ghost.hide-mobile { display:none; }
+            /* Mobile guest menu */
+            .mobile-guest-menu { display:flex; }
+            /* Guest mobile dropdown */
+            .guest-dropdown {
+                display:none;
+                position:fixed;
+                top:calc(var(--nav-h) + 7px);
+                left:0; right:0;
+                background:var(--jain-blue);
+                border-bottom:3px solid var(--jain-yellow);
+                z-index:300;
+                flex-direction:column;
+                padding:0.5rem 0;
+                box-shadow:0 8px 24px rgba(0,0,0,0.25);
+            }
+            .guest-dropdown.open { display:flex; }
+            .guest-dropdown a {
+                display:flex; align-items:center; gap:0.75rem;
+                padding:0.85rem 1.5rem;
+                color:rgba(255,255,255,0.8);
+                text-decoration:none;
+                font-family:'Nunito',sans-serif;
+                font-size:0.95rem; font-weight:700;
+                border-bottom:1px solid rgba(255,255,255,0.06);
+                transition:background 0.15s;
+            }
+            .guest-dropdown a:last-child { border-bottom:none; }
+            .guest-dropdown a:hover { background:rgba(255,255,255,0.08); color:#fff; }
+            .guest-dropdown a.enroll {
+                background:var(--jain-yellow);
+                color:var(--jain-blue);
+                margin:0.5rem 1rem;
+                border-radius:8px;
+                justify-content:center;
+                border-bottom:none;
+            }
+            .guest-dropdown a.enroll:hover { background:var(--yellow-dark); color:#fff; }
 
             /* Sidebar: off-canvas on mobile */
             .app-sidebar {
@@ -428,12 +468,16 @@
     <!-- Desktop right links -->
     <div class="topnav-right">
       {% if not u %}
-        <a href="/classes" class="nav-pill ghost">Classes</a>
-        <a href="/events"  class="nav-pill ghost">Events</a>
-        <a href="/about"   class="nav-pill ghost">About</a>
-        <a href="/donate"  class="nav-pill ghost">Donate</a>
+        <a href="/classes" class="nav-pill ghost hide-mobile">Classes</a>
+        <a href="/events"  class="nav-pill ghost hide-mobile">Events</a>
+        <a href="/about"   class="nav-pill ghost hide-mobile">About</a>
+        <a href="/donate"  class="nav-pill ghost hide-mobile">Donate</a>
         <a href="/login"   class="nav-pill ghost">Login</a>
         <a href="/register/student" class="nav-pill yellow">Enroll Now</a>
+        <!-- Mobile guest menu button -->
+        <button class="hamburger mobile-guest-menu" id="guest-menu-toggle" aria-label="Menu" style="display:none;">
+          <span></span><span></span><span></span>
+        </button>
       {% else %}
         {% set rf={'north_america':'🇺🇸','uk':'🇬🇧','europe':'🇪🇺','india':'🇮🇳','australia':'🇦🇺','south_america':'🇧🇷'} %}
         <span class="nav-pill loc">{{ rf.get(u.region,'🌍') }} {{ u.city or region_label(u.region) }}</span>
@@ -450,6 +494,18 @@
     </div>
   </div>
 </div>
+
+<!-- ── GUEST MOBILE DROPDOWN (rendered for guests only) ── -->
+{% if not u %}
+<div class="guest-dropdown" id="guest-dropdown">
+  <a href="/classes">📚 Classes</a>
+  <a href="/events">📅 Events</a>
+  <a href="/about">🙏 About GJPP</a>
+  <a href="/donate">💛 Donate</a>
+  <a href="/login">🔑 Login</a>
+  <a href="/register/student" class="enroll">🎓 Enroll Now</a>
+</div>
+{% endif %}
 
 <!-- ── APP SHELL ── -->
 <div class="app-shell">
@@ -653,6 +709,32 @@ sidebar && sidebar.querySelectorAll('.sb-link, .sb-foot a').forEach(link=>{
 
 /* Resize: always close if going back to desktop */
 window.addEventListener('resize', ()=>{ if(window.innerWidth>768) closeSidebar(); });
+
+/* ── Guest mobile menu ── */
+const guestToggle   = document.getElementById('guest-menu-toggle');
+const guestDropdown = document.getElementById('guest-dropdown');
+
+if (guestToggle && guestDropdown) {
+  guestToggle.addEventListener('click', () => {
+    const open = guestDropdown.classList.toggle('open');
+    // Animate hamburger lines
+    const spans = guestToggle.querySelectorAll('span');
+    if (open) {
+      spans[0].style.transform = 'translateY(7px) rotate(45deg)';
+      spans[1].style.opacity   = '0';
+      spans[2].style.transform = 'translateY(-7px) rotate(-45deg)';
+    } else {
+      spans.forEach(s => { s.style.transform=''; s.style.opacity=''; });
+    }
+  });
+  // Close on link click
+  guestDropdown.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      guestDropdown.classList.remove('open');
+      guestToggle.querySelectorAll('span').forEach(s=>{s.style.transform='';s.style.opacity='';});
+    });
+  });
+}
 </script>
 {% block extra_js %}{% endblock %}
 </body>

@@ -2,7 +2,7 @@
 {% block title %}Student Videos - Teacher GJPP{% endblock %}
 {% block extra_css %}
 <style>
-.pg{padding:2rem 2.5rem;}
+.pg{padding:1.5rem 1.75rem;} @media(max-width:768px){.pg{padding:1rem 1rem;}}
 .pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}
 .pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}
 .vid-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;margin-bottom:2rem;}
@@ -63,7 +63,7 @@
       <h3>⏳ {{ pending|length }} Pending Request{{ 's' if pending|length != 1 }}</h3>
       <a href="/teacher/video-requests" class="btn btn-outline-blue" style="font-size:0.78rem;padding:0.38rem 0.85rem;">Manage →</a>
     </div>
-    <table class="tbl">
+    <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>Student</th><th>Topic</th><th>Due Date</th></tr></thead>
       <tbody>
         {% for r in pending %}
@@ -74,7 +74,7 @@
         </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
   {% endif %}
 </div>

@@ -2,7 +2,7 @@
 {% block title %}{{ region.name if region }} Admin Dashboard - GJPP{% endblock %}
 {% block extra_css %}
 <style>
-.pg{padding:2rem 2.5rem;}
+.pg{padding:1.5rem 1.75rem;} @media(max-width:768px){.pg{padding:1rem 1rem;}}
 .pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}
 .pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:2rem;}
@@ -69,47 +69,47 @@
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
     <div class="sc">
       <div class="sc-head"><h3>Recent Students</h3><a href="/radmin/students" class="btn btn-blue" style="font-size:0.78rem;padding:0.4rem 0.85rem;">View All →</a></div>
-      <table class="tbl">
+      <div class="tbl-wrap"><table class="tbl">
         <thead><tr><th>Name</th><th>Level</th><th>City</th></tr></thead>
         <tbody>
           {% for s in students[-5:]|reverse %}
           <tr><td><strong>{{ s.name }}</strong></td><td><span class="tag tag-blue">{{ s.level }}</span></td><td>{{ s.city }}</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </div>
     <div class="sc">
       <div class="sc-head"><h3>Events</h3><a href="/radmin/events/new" class="btn btn-green" style="font-size:0.78rem;padding:0.4rem 0.85rem;">+ New</a></div>
-      <table class="tbl">
+      <div class="tbl-wrap"><table class="tbl">
         <thead><tr><th>Title</th><th>Type</th><th>Date</th></tr></thead>
         <tbody>
           {% for e in events %}
           <tr><td><strong>{{ e.title }}</strong></td><td><span class="tag tag-yellow">{{ e.type }}</span></td><td style="color:var(--text-muted);font-size:0.78rem;">{{ e.date }}</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </div>
     <div class="sc">
       <div class="sc-head"><h3>Study Materials</h3><a href="/materials/upload" class="btn btn-yellow" style="font-size:0.78rem;padding:0.4rem 0.85rem;">+ Upload</a></div>
-      <table class="tbl">
+      <div class="tbl-wrap"><table class="tbl">
         <thead><tr><th>Title</th><th>Level</th><th>Downloads</th></tr></thead>
         <tbody>
           {% for m in materials %}
           <tr><td><strong>{{ m.title }}</strong></td><td><span class="tag tag-blue">{{ m.level }}</span></td><td>{{ m.downloads }}</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </div>
     <div class="sc">
       <div class="sc-head"><h3>Teachers</h3></div>
-      <table class="tbl">
+      <div class="tbl-wrap"><table class="tbl">
         <thead><tr><th>Name</th><th>Class</th><th>City</th></tr></thead>
         <tbody>
           {% for t in teachers %}
           <tr><td><strong>{{ t.name }}</strong></td><td style="font-size:0.78rem;color:var(--text-muted);">{{ t.class_id or '—' }}</td><td>{{ t.city }}</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 </div>

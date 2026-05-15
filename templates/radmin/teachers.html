@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ region.name if region }} Teachers - GJPP{% endblock %}
-{% block extra_css %}<style>.pg{padding:2rem 2.5rem;}.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}.sc-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}.sc-head h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);}.av{width:32px;height:32px;border-radius:50%;background:#5B1A8A;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;margin-right:0.5rem;}</style>{% endblock %}
+{% block extra_css %}<style>.pg{padding:1.5rem 1.75rem;} @media(max-width:768px){.pg{padding:1rem 1rem;}}.pg-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.2rem;}.pg-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:1.75rem;}.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}.sc-head{padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}.sc-head h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);}.av{width:32px;height:32px;border-radius:50%;background:#5B1A8A;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;margin-right:0.5rem;}</style>{% endblock %}
 {% block content %}
 <div class="pg">
   <div style="background:linear-gradient(135deg,#5B1A8A,#3D0F6A);border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;">
@@ -11,7 +11,7 @@
   <div class="pg-sub">All teachers assigned to your region</div>
   <div class="sc">
     <div class="sc-head"><h3>{{ teachers|length }} Teacher{{ 's' if teachers|length != 1 }}</h3></div>
-    <table class="tbl">
+    <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>Teacher</th><th>Email</th><th>City</th><th>Class</th><th>Students</th></tr></thead>
       <tbody>
         {% for t in teachers %}
@@ -27,7 +27,7 @@
         <tr><td colspan="5" style="text-align:center;padding:3rem;color:var(--text-muted);">No teachers in your region.</td></tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 {% endblock %}

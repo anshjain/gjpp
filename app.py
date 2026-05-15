@@ -4,9 +4,7 @@ from functools import wraps
 import uuid
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-
-import os
-app.secret_key = os.environ.get('SECRET_KEY', 'gjpp-secret-key-2024')
+app.secret_key = 'gjpp-secret-key-2024'
 
 # ─────────────────────────────────────────
 #  SEED DATA  (replace with DB in prod)
@@ -1334,8 +1332,4 @@ def parent_teachers():
     )
 
 if __name__ == '__main__':
-    app.run(
-        host='0.0.0.0',
-        port=int(os.environ.get("PORT", 8080)),
-        debug=False
-    )
+    app.run(debug=True, port=5000)

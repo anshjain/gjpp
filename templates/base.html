@@ -6,6 +6,7 @@
     <title>{% block title %}GJPP - Global Jain Pramanik Pathshala{% endblock %}</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Nunito:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* ── CSS VARIABLES ── */
         :root {
             --jain-blue:    #0D2B6E;
             --jain-red:     #C8102E;
@@ -30,245 +31,392 @@
             --shadow:       0 4px 24px rgba(13,43,110,0.09);
             --shadow-lg:    0 12px 48px rgba(13,43,110,0.16);
             --sidebar-w:    230px;
+            --nav-h:        60px;
         }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Nunito',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+        /* ── RESET ── */
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body {
+            font-family:'Nunito',sans-serif;
+            background:var(--bg);
+            color:var(--text);
+            min-height:100vh;
+            display:flex;
+            flex-direction:column;
+            overflow-x:hidden;
+        }
+        img { max-width:100%; display:block; }
+        a   { color:inherit; }
+
+        /* ── JAIN COLOR BAR ── */
+        .jain-bar {
+            height:4px;
+            flex-shrink:0;
+            background:linear-gradient(90deg,
+                var(--jain-blue)   0%  20%,
+                var(--jain-red)   20%  40%,
+                var(--jain-yellow)40%  60%,
+                var(--jain-white) 60%  80%,
+                var(--jain-green) 80% 100%
+            );
+        }
 
         /* ── TOP NAV ── */
         .topnav {
-            background: var(--jain-blue);
-            position: sticky; top:0; z-index:300;
-            border-bottom: 3px solid var(--jain-yellow);
-            height: 64px;
+            background:var(--jain-blue);
+            position:sticky; top:0; z-index:400;
+            border-bottom:3px solid var(--jain-yellow);
+            flex-shrink:0;
         }
         .topnav-inner {
-            display: flex; align-items: center;
-            justify-content: space-between;
-            height: 64px; padding: 0 1.5rem;
+            display:flex; align-items:center;
+            justify-content:space-between;
+            height:var(--nav-h);
+            padding:0 1.25rem;
+            max-width:100%;
         }
         .topnav-logo {
-            display:flex; align-items:center; gap:0.65rem;
-            text-decoration:none; flex-shrink:0;
+            display:flex; align-items:center; gap:0.6rem;
+            text-decoration:none; flex-shrink:0; min-width:0;
         }
-        .topnav-logo img { height:38px; width:38px; object-fit:contain; }
-        .topnav-logo .ltext .top { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; color:#fff; display:block; line-height:1.1; }
-        .topnav-logo .ltext .sub { font-size:0.6rem; font-weight:700; color:var(--jain-yellow); letter-spacing:0.05em; text-transform:uppercase; display:block; opacity:0.85; }
+        .topnav-logo img { height:36px; width:36px; object-fit:contain; flex-shrink:0; }
+        .topnav-logo .ltext { min-width:0; }
+        .topnav-logo .ltext .top {
+            font-family:'Playfair Display',serif;
+            font-size:0.95rem; font-weight:700; color:#fff;
+            display:block; line-height:1.1;
+        }
+        .topnav-logo .ltext .sub {
+            font-size:0.55rem; font-weight:700; color:var(--jain-yellow);
+            letter-spacing:0.05em; text-transform:uppercase;
+            display:block; opacity:0.85; white-space:nowrap;
+        }
 
-        .topnav-right { display:flex; align-items:center; gap:0.5rem; }
+        .topnav-right {
+            display:flex; align-items:center;
+            gap:0.3rem; flex-shrink:0; margin-left:0.75rem;
+        }
+
+        /* hamburger – mobile only */
+        .hamburger {
+            display:none;
+            flex-direction:column; gap:5px;
+            background:none; border:none; cursor:pointer;
+            padding:6px; border-radius:6px;
+            transition:background 0.18s;
+        }
+        .hamburger:hover { background:rgba(255,255,255,0.12); }
+        .hamburger span {
+            display:block; width:22px; height:2px;
+            background:#fff; border-radius:2px;
+            transition:all 0.25s;
+        }
 
         .nav-pill {
-            display:flex; align-items:center; gap:0.35rem;
-            padding:0.28rem 0.75rem; border-radius:100px;
-            font-size:0.75rem; font-weight:700;
+            display:inline-flex; align-items:center; gap:0.35rem;
+            padding:0.28rem 0.7rem; border-radius:100px;
+            font-family:'Nunito',sans-serif;
+            font-size:0.78rem; font-weight:700;
             text-decoration:none; transition:all 0.18s;
-            border:1px solid transparent;
-            white-space:nowrap;
+            border:1px solid transparent; white-space:nowrap;
+            cursor:pointer;
         }
-        .nav-pill.ghost { color:rgba(255,255,255,0.68); border-color:rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); }
-        .nav-pill.ghost:hover { color:#fff; background:rgba(255,255,255,0.13); }
+        .nav-pill.ghost  { color:rgba(255,255,255,0.7); border-color:rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); }
+        .nav-pill.ghost:hover { color:#fff; background:rgba(255,255,255,0.14); }
         .nav-pill.yellow { background:var(--jain-yellow); color:var(--jain-blue); font-weight:800; }
         .nav-pill.yellow:hover { background:var(--yellow-dark); color:#fff; }
-        .nav-pill.red { background:rgba(200,16,46,0.15); color:var(--jain-red); border-color:rgba(200,16,46,0.3); }
+        .nav-pill.red    { background:rgba(200,16,46,0.18); color:#ff8a9a; border-color:rgba(200,16,46,0.35); }
         .nav-pill.red:hover { background:var(--jain-red); color:#fff; }
-        .nav-pill.loc { color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); cursor:default; }
-
+        .nav-pill.loc    { color:rgba(255,255,255,0.55); border-color:rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); cursor:default; font-size:0.72rem; }
         .nav-avatar {
-            width:26px; height:26px; border-radius:50%;
+            width:22px; height:22px; border-radius:50%;
             background:var(--jain-yellow); color:var(--jain-blue);
             display:inline-flex; align-items:center; justify-content:center;
-            font-size:0.7rem; font-weight:800; flex-shrink:0;
+            font-size:0.65rem; font-weight:800; flex-shrink:0;
         }
 
         /* ── APP SHELL ── */
-        .app-shell { display:flex; min-height:calc(100vh - 64px); }
+        .app-shell {
+            display:flex;
+            flex:1;               /* fill body height */
+            min-height:0;         /* prevent overflow */
+        }
 
         /* ── SIDEBAR ── */
         .app-sidebar {
-            width: var(--sidebar-w);
-            flex-shrink: 0;
-            position: sticky;
-            top: 64px;
-            height: calc(100vh - 64px);
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            z-index: 200;
+            width:var(--sidebar-w);
+            flex-shrink:0;
+            position:sticky;
+            top:calc(var(--nav-h) + 7px); /* nav + bar */
+            height:calc(100vh - var(--nav-h) - 7px);
+            overflow-y:auto;
+            overflow-x:hidden;
+            display:flex;
+            flex-direction:column;
+            z-index:200;
+            transition:transform 0.28s ease;
         }
-        .app-sidebar.sidebar-admin          { background: var(--jain-blue); }
-        .app-sidebar.sidebar-regional_admin { background: #5B1A8A; }
-        .app-sidebar.sidebar-teacher        { background: var(--jain-green); }
-        .app-sidebar.sidebar-parent         { background: var(--jain-red); }
+        .app-sidebar.sidebar-admin          { background:var(--jain-blue); }
+        .app-sidebar.sidebar-regional_admin { background:#5B1A8A; }
+        .app-sidebar.sidebar-teacher        { background:var(--jain-green); }
+        .app-sidebar.sidebar-parent         { background:var(--jain-red); }
+
+        /* Mobile sidebar overlay */
+        .sb-overlay {
+            display:none;
+            position:fixed; inset:0;
+            background:rgba(0,0,0,0.45);
+            z-index:199;
+        }
 
         .sb-head {
-            padding: 1.1rem 1.25rem 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            flex-shrink: 0;
+            padding:1rem 1.1rem 0.85rem;
+            border-bottom:1px solid rgba(255,255,255,0.1);
+            flex-shrink:0;
         }
-        .sb-role { font-size:0.62rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.38); margin-bottom:0.2rem; }
-        .sb-name { font-weight:800; color:#fff; font-size:0.9rem; line-height:1.2; }
-        .sb-loc  { font-size:0.7rem; color:rgba(255,255,255,0.5); margin-top:0.15rem; }
+        .sb-role { font-size:0.6rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.38); margin-bottom:0.2rem; }
+        .sb-name { font-weight:800; color:#fff; font-size:0.875rem; line-height:1.2; }
+        .sb-loc  { font-size:0.68rem; color:rgba(255,255,255,0.48); margin-top:0.12rem; }
 
-        /* Admin region switcher inside sidebar head */
-        .sb-region-switch {
-            margin-top:0.75rem;
-            background:rgba(255,255,255,0.07);
-            border:1px solid rgba(255,255,255,0.12);
-            border-radius:8px;
-            overflow:hidden;
-        }
-        .sb-region-label { font-size:0.62rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.4); padding:0.5rem 0.75rem 0.25rem; }
-        .sb-region-grid  { display:grid; grid-template-columns:1fr 1fr; gap:2px; padding:0 2px 2px; }
+        /* Region switcher */
+        .sb-region-switch { margin-top:0.7rem; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:8px; overflow:hidden; }
+        .sb-region-label  { font-size:0.58rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.38); padding:0.45rem 0.7rem 0.2rem; }
+        .sb-region-grid   { display:grid; grid-template-columns:1fr 1fr; gap:2px; padding:0 2px 2px; }
         .sb-region-btn {
-            display:flex; align-items:center; gap:0.3rem;
-            padding:0.38rem 0.5rem; border-radius:5px;
-            font-size:0.72rem; font-weight:700;
-            color:rgba(255,255,255,0.6);
+            display:flex; align-items:center; gap:0.25rem;
+            padding:0.35rem 0.45rem; border-radius:5px;
+            font-size:0.68rem; font-weight:700; color:rgba(255,255,255,0.6);
             background:transparent; border:none; cursor:pointer;
             transition:all 0.15s; text-align:left; width:100%;
         }
         .sb-region-btn:hover { background:rgba(255,255,255,0.12); color:#fff; }
         .sb-region-btn.active { background:var(--jain-yellow); color:var(--jain-blue); font-weight:800; }
 
-        .sb-body { flex:1; padding:0.5rem 0; }
-        .sb-section { font-size:0.6rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.32); padding:0.6rem 1.25rem 0.3rem; }
+        .sb-body    { flex:1; padding:0.4rem 0; overflow-y:auto; }
+        .sb-section { font-size:0.58rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.3); padding:0.55rem 1.1rem 0.25rem; }
         .sb-link {
-            display:flex; align-items:center; gap:0.65rem;
-            padding:0.55rem 1rem; margin:0.05rem 0.6rem;
+            display:flex; align-items:center; gap:0.6rem;
+            padding:0.52rem 0.85rem; margin:0.04rem 0.55rem;
             border-radius:7px; color:rgba(255,255,255,0.65);
-            text-decoration:none; font-size:0.845rem; font-weight:700;
+            text-decoration:none; font-size:0.825rem; font-weight:700;
             transition:all 0.17s;
         }
         .sb-link:hover { background:rgba(255,255,255,0.12); color:#fff; }
-        .sb-link.active { background:rgba(255,255,255,0.16); color:#fff; }
-        .sb-link .si { font-size:0.95rem; width:18px; text-align:center; flex-shrink:0; }
-        .sb-badge { margin-left:auto; background:var(--jain-red); color:#fff; font-size:0.62rem; font-weight:800; padding:0.1rem 0.45rem; border-radius:100px; }
-        .sidebar-admin .sb-badge { background:var(--jain-red); }
-        .sidebar-teacher .sb-badge { background:var(--jain-yellow); color:var(--jain-blue); }
-        .sidebar-parent .sb-badge  { background:var(--jain-yellow); color:var(--jain-blue); }
-
-        .sb-foot {
-            padding:0.85rem 1.25rem;
-            border-top:1px solid rgba(255,255,255,0.08);
-            flex-shrink:0;
-        }
-        .sb-foot a { color:rgba(255,255,255,0.42); text-decoration:none; font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; transition:color 0.18s; }
+        .sb-link.active { background:rgba(255,255,255,0.17); color:#fff; }
+        .sb-link .si { font-size:0.9rem; width:17px; text-align:center; flex-shrink:0; }
+        .sb-badge { margin-left:auto; background:var(--jain-red); color:#fff; font-size:0.6rem; font-weight:800; padding:0.1rem 0.42rem; border-radius:100px; }
+        .sb-foot  { padding:0.8rem 1.1rem; border-top:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
+        .sb-foot a { color:rgba(255,255,255,0.42); text-decoration:none; font-size:0.8rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; transition:color 0.18s; }
         .sb-foot a:hover { color:#fff; }
 
         /* ── PAGE CONTENT ── */
-        .app-content { flex:1; min-width:0; overflow-x:hidden; }
+        .app-content {
+            flex:1;
+            min-width:0;
+            display:flex;
+            flex-direction:column;
+            overflow-x:hidden;
+        }
+
+        /* CRITICAL: remove the old margin-top on footer */
+        main { flex:1; }
 
         /* ── FLASH ── */
-        .flash-wrap { padding:0.75rem 2rem 0; }
-        .flash { padding:0.8rem 1.1rem; border-radius:9px; margin-bottom:0.4rem; font-size:0.9rem; font-weight:600; border:1px solid; }
+        .flash-wrap { padding:0.75rem 1.25rem 0; }
+        .flash { padding:0.75rem 1.1rem; border-radius:9px; margin-bottom:0.4rem; font-size:0.88rem; font-weight:600; border:1px solid; }
         .flash.success { background:var(--green-light); color:var(--green-dark); border-color:#a7d9b8; }
         .flash.error   { background:var(--red-light);   color:var(--red-dark);   border-color:#f7b2bf; }
 
-        main { min-height:100%; }
-
-        /* ── FOOTER (only for guests) ── */
+        /* ── FOOTER ── */
         .public-footer {
-            background:var(--jain-blue); color:rgba(255,255,255,0.5);
-            padding:3rem 2rem 1.5rem; margin-top:5rem;
+            background:var(--jain-blue);
+            color:rgba(255,255,255,0.5);
+            padding:2.5rem 1.5rem 1.25rem;
+            /* NO margin-top — flex layout handles spacing */
             border-top:4px solid var(--jain-yellow);
+            flex-shrink:0;
         }
-        .footer-inner { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:2.5rem; }
+        .footer-inner { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:2rem; }
         .footer-brand-logo { display:flex; align-items:center; gap:0.65rem; margin-bottom:0.65rem; }
-        .footer-brand-logo img { height:36px; width:36px; object-fit:contain; }
-        .footer-brand-logo span { font-family:'Playfair Display',serif; font-size:0.95rem; font-weight:700; color:#fff; }
-        .footer-brand p { font-size:0.85rem; line-height:1.6; max-width:280px; }
-        .footer-col h4 { color:var(--jain-yellow); font-size:0.68rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.85rem; }
-        .footer-col a { display:block; color:rgba(255,255,255,0.5); text-decoration:none; font-size:0.85rem; margin-bottom:0.5rem; transition:color 0.18s; }
+        .footer-brand-logo img { height:34px; width:34px; object-fit:contain; }
+        .footer-brand-logo span { font-family:'Playfair Display',serif; font-size:0.9rem; font-weight:700; color:#fff; }
+        .footer-brand p { font-size:0.825rem; line-height:1.6; max-width:260px; }
+        .footer-col h4 { color:var(--jain-yellow); font-size:0.66rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.8rem; }
+        .footer-col a  { display:block; color:rgba(255,255,255,0.5); text-decoration:none; font-size:0.825rem; margin-bottom:0.45rem; transition:color 0.18s; }
         .footer-col a:hover { color:var(--jain-yellow); }
-        .footer-bottom { max-width:1200px; margin:1.5rem auto 0; padding-top:1.2rem; border-top:1px solid rgba(255,255,255,0.08); text-align:center; font-size:0.78rem; }
+        .footer-bottom { max-width:1100px; margin:1.25rem auto 0; padding-top:1.1rem; border-top:1px solid rgba(255,255,255,0.08); text-align:center; font-size:0.76rem; }
 
         /* ── SHARED UTILITIES ── */
-        .container  { max-width:1200px; margin:0 auto; padding:0 2rem; }
-        .section    { padding:4.5rem 0; }
-        .section-sm { padding:2.5rem 0; }
-        .page-wrap  { padding:2rem 2.5rem; }
+        .container  { max-width:1200px; margin:0 auto; padding:0 1.25rem; }
+        .section    { padding:3.5rem 0; }
+        .section-sm { padding:2rem 0; }
+        .page-wrap  { padding:1.5rem 1.75rem; }
 
-        .badge { display:inline-flex; align-items:center; gap:0.3rem; padding:0.25rem 0.7rem; border-radius:100px; font-size:0.7rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; }
+        .badge { display:inline-flex; align-items:center; gap:0.3rem; padding:0.22rem 0.7rem; border-radius:100px; font-size:0.68rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; }
         .badge-blue   { background:var(--blue-light);   color:var(--jain-blue); }
         .badge-red    { background:var(--red-light);    color:var(--red-dark); }
         .badge-yellow { background:var(--yellow-light); color:var(--yellow-dark); }
         .badge-green  { background:var(--green-light);  color:var(--green-dark); }
         .badge-white  { background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.9); border:1px solid rgba(255,255,255,0.2); }
 
-        .btn { display:inline-flex; align-items:center; gap:0.45rem; padding:0.65rem 1.5rem; border-radius:8px; font-family:'Nunito',sans-serif; font-size:0.875rem; font-weight:800; text-decoration:none; cursor:pointer; border:none; transition:all 0.2s; }
-        .btn-lg { padding:0.85rem 2rem; font-size:0.95rem; border-radius:10px; }
+        .btn {
+            display:inline-flex; align-items:center; gap:0.45rem;
+            padding:0.62rem 1.35rem; border-radius:8px;
+            font-family:'Nunito',sans-serif; font-size:0.875rem; font-weight:800;
+            text-decoration:none; cursor:pointer; border:none;
+            transition:all 0.2s; white-space:nowrap;
+        }
+        .btn-lg { padding:0.8rem 1.85rem; font-size:0.95rem; border-radius:10px; }
+        .btn-sm { padding:0.38rem 0.85rem; font-size:0.78rem; border-radius:7px; }
+        .btn-block { width:100%; justify-content:center; }
         .btn-blue   { background:var(--jain-blue);   color:#fff; }
-        .btn-blue:hover   { background:var(--blue-mid); transform:translateY(-1px); box-shadow:0 6px 18px rgba(13,43,110,0.3); }
+        .btn-blue:hover   { background:var(--blue-mid); transform:translateY(-1px); box-shadow:0 5px 16px rgba(13,43,110,0.3); }
         .btn-red    { background:var(--jain-red);    color:#fff; }
-        .btn-red:hover    { background:var(--red-dark); transform:translateY(-1px); box-shadow:0 6px 18px rgba(200,16,46,0.3); }
+        .btn-red:hover    { background:var(--red-dark); transform:translateY(-1px); box-shadow:0 5px 16px rgba(200,16,46,0.3); }
         .btn-yellow { background:var(--jain-yellow); color:var(--jain-blue); }
         .btn-yellow:hover { background:var(--yellow-dark); color:#fff; transform:translateY(-1px); }
         .btn-green  { background:var(--jain-green);  color:#fff; }
         .btn-green:hover  { background:var(--green-dark); transform:translateY(-1px); }
         .btn-white  { background:#fff; color:var(--jain-blue); font-weight:800; }
         .btn-white:hover  { background:var(--blue-light); }
-        .btn-outline-blue { background:transparent; color:var(--jain-blue); border:2px solid var(--jain-blue); }
-        .btn-outline-blue:hover { background:var(--jain-blue); color:#fff; }
+        .btn-outline-blue  { background:transparent; color:var(--jain-blue); border:2px solid var(--jain-blue); }
+        .btn-outline-blue:hover  { background:var(--jain-blue); color:#fff; }
         .btn-outline-white { background:transparent; color:#fff; border:2px solid rgba(255,255,255,0.35); }
-        .btn-outline-white:hover { border-color:#fff; background:rgba(255,255,255,0.1); }
+        .btn-outline-white:hover { border-color:#fff; background:rgba(255,255,255,0.12); }
 
         .card { background:#fff; border-radius:14px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; }
 
-        .form-group { margin-bottom:1.2rem; }
-        .form-label { display:block; font-size:0.83rem; font-weight:800; color:var(--jain-blue); margin-bottom:0.38rem; }
+        /* Forms */
+        .form-group   { margin-bottom:1.1rem; }
+        .form-label   { display:block; font-size:0.82rem; font-weight:800; color:var(--jain-blue); margin-bottom:0.35rem; }
         .form-label span { color:var(--jain-red); }
-        .form-input,.form-select,.form-textarea { width:100%; padding:0.68rem 0.95rem; border:1.5px solid rgba(13,43,110,0.17); border-radius:8px; font-family:'Nunito',sans-serif; font-size:0.875rem; color:var(--text); background:var(--bg); transition:border-color 0.2s,box-shadow 0.2s; outline:none; }
-        .form-input:focus,.form-select:focus,.form-textarea:focus { border-color:var(--jain-blue); background:#fff; box-shadow:0 0 0 3px rgba(13,43,110,0.08); }
-        .form-textarea { resize:vertical; min-height:95px; }
-        .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-        .form-check { display:flex; align-items:flex-start; gap:0.7rem; padding:0.9rem; background:var(--blue-light); border-radius:8px; border:1px solid var(--border); }
-        .form-check input[type="checkbox"] { width:17px; height:17px; margin-top:1px; accent-color:var(--jain-blue); flex-shrink:0; }
-        .form-check label { font-size:0.85rem; color:var(--text-mid); line-height:1.5; }
+        .form-input, .form-select, .form-textarea {
+            width:100%; padding:0.65rem 0.9rem;
+            border:1.5px solid rgba(13,43,110,0.17); border-radius:8px;
+            font-family:'Nunito',sans-serif; font-size:0.875rem; color:var(--text);
+            background:var(--bg); transition:border-color 0.2s,box-shadow 0.2s; outline:none;
+        }
+        .form-input:focus,.form-select:focus,.form-textarea:focus {
+            border-color:var(--jain-blue); background:#fff;
+            box-shadow:0 0 0 3px rgba(13,43,110,0.08);
+        }
+        .form-textarea { resize:vertical; min-height:90px; }
+        .form-grid     { display:grid; grid-template-columns:1fr 1fr; gap:0.9rem; }
+        .form-check    { display:flex; align-items:flex-start; gap:0.65rem; padding:0.85rem; background:var(--blue-light); border-radius:8px; border:1px solid var(--border); }
+        .form-check input[type="checkbox"] { width:16px; height:16px; margin-top:2px; accent-color:var(--jain-blue); flex-shrink:0; }
+        .form-check label { font-size:0.84rem; color:var(--text-mid); line-height:1.5; }
 
-        .page-header { background:linear-gradient(135deg,var(--jain-blue) 0%,var(--blue-mid) 100%); padding:3.5rem 0; position:relative; overflow:hidden; }
+        /* Page header */
+        .page-header { background:linear-gradient(135deg,var(--jain-blue) 0%,var(--blue-mid) 100%); padding:3rem 0; position:relative; overflow:hidden; }
         .page-header::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 80% 50%,rgba(245,197,24,0.1) 0%,transparent 60%); }
-        .page-header-inner { max-width:1200px; margin:0 auto; padding:0 2rem; position:relative; }
-        .page-header h1 { font-family:'Playfair Display',serif; font-size:2.8rem; color:#fff; font-weight:800; margin-bottom:0.5rem; }
-        .page-header p  { color:rgba(255,255,255,0.6); font-size:1rem; max-width:580px; line-height:1.6; }
+        .page-header-inner { max-width:1200px; margin:0 auto; padding:0 1.25rem; position:relative; }
+        .page-header h1 { font-family:'Playfair Display',serif; font-size:2.4rem; color:#fff; font-weight:800; margin-bottom:0.5rem; }
+        .page-header p  { color:rgba(255,255,255,0.6); font-size:0.95rem; max-width:560px; line-height:1.6; }
 
-        .section-label { font-size:0.7rem; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:var(--jain-red); margin-bottom:0.65rem; }
-        .section-title { font-family:'Playfair Display',serif; font-size:2.5rem; font-weight:800; color:var(--jain-blue); line-height:1.1; margin-bottom:0.85rem; }
+        .section-label { font-size:0.68rem; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:var(--jain-red); margin-bottom:0.6rem; }
+        .section-title { font-family:'Playfair Display',serif; font-size:2.2rem; font-weight:800; color:var(--jain-blue); line-height:1.1; margin-bottom:0.85rem; }
         .section-subtitle { color:var(--text-muted); font-size:0.95rem; line-height:1.65; max-width:520px; }
 
-        .cta-strip { background:linear-gradient(135deg,var(--jain-blue) 0%,var(--blue-mid) 100%); border-radius:18px; padding:3.5rem; text-align:center; position:relative; overflow:hidden; }
-        .cta-strip::before { content:''; position:absolute; width:400px; height:400px; background:radial-gradient(circle,rgba(245,197,24,0.12) 0%,transparent 70%); right:-80px; top:50%; transform:translateY(-50%); }
-        .cta-strip h2 { font-family:'Playfair Display',serif; font-size:2.2rem; color:#fff; margin-bottom:0.65rem; position:relative; }
-        .cta-strip p  { color:rgba(255,255,255,0.6); font-size:0.95rem; margin-bottom:1.75rem; position:relative; }
-        .cta-strip-actions { display:flex; gap:1rem; justify-content:center; position:relative; flex-wrap:wrap; }
+        .cta-strip { background:linear-gradient(135deg,var(--jain-blue) 0%,var(--blue-mid) 100%); border-radius:16px; padding:3rem 2.5rem; text-align:center; position:relative; overflow:hidden; }
+        .cta-strip::before { content:''; position:absolute; width:380px; height:380px; background:radial-gradient(circle,rgba(245,197,24,0.12) 0%,transparent 70%); right:-70px; top:50%; transform:translateY(-50%); }
+        .cta-strip h2 { font-family:'Playfair Display',serif; font-size:2rem; color:#fff; margin-bottom:0.6rem; position:relative; }
+        .cta-strip p  { color:rgba(255,255,255,0.6); font-size:0.92rem; margin-bottom:1.65rem; position:relative; }
+        .cta-strip-actions { display:flex; gap:0.85rem; justify-content:center; position:relative; flex-wrap:wrap; }
 
-        .jain-bar { height:5px; background:linear-gradient(90deg,var(--jain-blue) 0%,var(--jain-blue) 20%,var(--jain-red) 20%,var(--jain-red) 40%,var(--jain-yellow) 40%,var(--jain-yellow) 60%,var(--jain-white) 60%,var(--jain-white) 80%,var(--jain-green) 80%,var(--jain-green) 100%); }
-
-        /* Table helpers */
+        /* Tables */
         .tbl { width:100%; border-collapse:collapse; }
-        .tbl th { background:var(--jain-blue); color:rgba(255,255,255,0.8); font-size:0.68rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:0.65rem 1rem; text-align:left; }
-        .tbl td { padding:0.82rem 1rem; border-bottom:1px solid var(--border); font-size:0.86rem; vertical-align:middle; }
+        .tbl th { background:var(--jain-blue); color:rgba(255,255,255,0.8); font-size:0.66rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:0.62rem 0.9rem; text-align:left; }
+        .tbl td { padding:0.78rem 0.9rem; border-bottom:1px solid var(--border); font-size:0.84rem; vertical-align:middle; }
         .tbl tr:last-child td { border-bottom:none; }
         .tbl tr:hover td { background:rgba(13,43,110,0.025); }
-        .tag { display:inline-flex; padding:0.18rem 0.6rem; border-radius:100px; font-size:0.68rem; font-weight:800; }
+
+        .tag { display:inline-flex; padding:0.16rem 0.55rem; border-radius:100px; font-size:0.66rem; font-weight:800; }
         .tag-blue   { background:var(--blue-light);   color:var(--jain-blue); }
         .tag-red    { background:var(--red-light);    color:var(--red-dark); }
         .tag-yellow { background:var(--yellow-light); color:var(--yellow-dark); }
         .tag-green  { background:var(--green-light);  color:var(--green-dark); }
 
-        @media(max-width:900px) {
-            .app-sidebar { display:none; }
+        /* ══════════════════════════════════════
+           MOBILE RESPONSIVE  (≤ 768px)
+        ══════════════════════════════════════ */
+        @media (max-width:768px) {
+
+            :root { --sidebar-w:260px; }
+
+            /* Nav */
+            .hamburger { display:flex; }
+            .topnav-logo .ltext .sub { display:none; }
+            .topnav-right .nav-pill.ghost:not(.user-pill),
+            .topnav-right .nav-pill.loc { display:none; }
+
+            /* Sidebar: off-canvas on mobile */
+            .app-sidebar {
+                position:fixed;
+                top:0; left:0;
+                height:100vh;
+                transform:translateX(-100%);
+                z-index:500;
+                box-shadow:4px 0 24px rgba(0,0,0,0.25);
+            }
+            .app-sidebar.sb-open { transform:translateX(0); }
+            .sb-overlay.sb-open  { display:block; }
+
+            /* Content: full width */
+            .app-content { width:100%; }
+
+            /* page-wrap reduced padding */
+            .page-wrap { padding:1rem 1rem; }
+
+            /* Footer grid */
+            .footer-inner { grid-template-columns:1fr 1fr; gap:1.25rem; }
+            .footer-brand-logo span { font-size:0.82rem; }
+
+            /* Form grid → single col */
             .form-grid { grid-template-columns:1fr; }
-            .footer-inner { grid-template-columns:1fr 1fr; gap:1.5rem; }
+
+            /* Page header */
+            .page-header { padding:2rem 0; }
+            .page-header h1 { font-size:1.7rem; }
+
+            /* Section */
+            .section    { padding:2rem 0; }
+            .section-sm { padding:1.25rem 0; }
+            .section-title { font-size:1.7rem; }
+
+            /* CTA */
+            .cta-strip { padding:2rem 1.25rem; border-radius:12px; }
+            .cta-strip h2 { font-size:1.5rem; }
+            .cta-strip-actions { flex-direction:column; align-items:center; }
+
+            /* Tables — make horizontally scrollable */
+            .tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+            .tbl { min-width:540px; }
+            .tbl th, .tbl td { padding:0.55rem 0.65rem; font-size:0.78rem; }
+
+            /* Buttons */
+            .btn { padding:0.58rem 1.1rem; font-size:0.84rem; }
+            .btn-lg { padding:0.72rem 1.5rem; font-size:0.9rem; }
+        }
+
+        @media (max-width:480px) {
+            .footer-inner { grid-template-columns:1fr; }
+            .footer-col:nth-child(n+3) { display:none; }
+            .page-header h1 { font-size:1.4rem; }
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 {% set u = current_user() %}
+
+<!-- ── 5-COLOR BAR ── -->
 <div class="jain-bar"></div>
 
 <!-- ── TOP NAV ── -->
 <div class="topnav">
   <div class="topnav-inner">
+    <!-- Logo -->
     <a href="{{ '/dashboard' if u else '/' }}" class="topnav-logo">
       <img src="/static/images/logo.png" alt="GJPP">
       <div class="ltext">
@@ -276,22 +424,28 @@
         <span class="sub">Global Jain Pramanik Pathshala</span>
       </div>
     </a>
+
+    <!-- Desktop right links -->
     <div class="topnav-right">
-      <a href="/classes" class="nav-pill ghost">Classes</a>
-      <a href="/events"  class="nav-pill ghost">Events</a>
-      <a href="/about"   class="nav-pill ghost">About</a>
-      {% if u %}
-        {% set region_flags={'north_america':'🇺🇸','uk':'🇬🇧','europe':'🇪🇺','india':'🇮🇳','australia':'🇦🇺','south_america':'🇧🇷'} %}
-        <span class="nav-pill loc">{{ region_flags.get(u.region,'🌍') }} {{ u.city or region_label(u.region) }}</span>
-        <a href="/dashboard" class="nav-pill ghost">
-          <span class="nav-avatar">{{ u.name[0].upper() }}</span>
-          {{ u.name.split()[0] }}
-        </a>
-        <a href="/logout" class="nav-pill red">Sign Out</a>
-      {% else %}
+      {% if not u %}
+        <a href="/classes" class="nav-pill ghost">Classes</a>
+        <a href="/events"  class="nav-pill ghost">Events</a>
+        <a href="/about"   class="nav-pill ghost">About</a>
         <a href="/donate"  class="nav-pill ghost">Donate</a>
         <a href="/login"   class="nav-pill ghost">Login</a>
         <a href="/register/student" class="nav-pill yellow">Enroll Now</a>
+      {% else %}
+        {% set rf={'north_america':'🇺🇸','uk':'🇬🇧','europe':'🇪🇺','india':'🇮🇳','australia':'🇦🇺','south_america':'🇧🇷'} %}
+        <span class="nav-pill loc">{{ rf.get(u.region,'🌍') }} {{ u.city or region_label(u.region) }}</span>
+        <a href="/dashboard" class="nav-pill ghost user-pill">
+          <span class="nav-avatar">{{ u.name[0].upper() }}</span>
+          <span>{{ u.name.split()[0] }}</span>
+        </a>
+        <a href="/logout" class="nav-pill red">Sign Out</a>
+        <!-- Hamburger (mobile only) -->
+        <button class="hamburger" id="sb-toggle" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
       {% endif %}
     </div>
   </div>
@@ -300,24 +454,26 @@
 <!-- ── APP SHELL ── -->
 <div class="app-shell">
 
-  {# ── PERSISTENT SIDEBAR for logged-in users ── #}
   {% if u %}
-  {% set pending_loc = namespace(count=0) %}
-  {% for r in [] %}{% endfor %}{# placeholder #}
+  <!-- Overlay for mobile sidebar -->
+  <div class="sb-overlay" id="sb-overlay"></div>
 
-  <aside class="app-sidebar sidebar-{{ u.role }}">
-    <!-- Head: user info -->
+  <!-- ── SIDEBAR ── -->
+  <aside class="app-sidebar sidebar-{{ u.role }}" id="app-sidebar">
     <div class="sb-head">
-      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.65rem;">
-        <div style="width:36px;height:36px;border-radius:50%;background:{% if u.role=='admin' %}var(--jain-yellow){% elif u.role=='teacher' %}#fff{% else %}#fff{% endif %};color:{% if u.role=='admin' %}var(--jain-blue){% elif u.role=='teacher' %}var(--jain-green){% else %}var(--jain-red){% endif %};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1rem;font-weight:800;flex-shrink:0;">{{ u.name[0].upper() }}</div>
+      <div style="display:flex;align-items:center;gap:0.55rem;margin-bottom:0.55rem;">
+        <div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:800;flex-shrink:0;
+          background:{% if u.role=='admin' %}var(--jain-yellow){% else %}rgba(255,255,255,0.9){% endif %};
+          color:{% if u.role=='admin' %}var(--jain-blue){% elif u.role=='teacher' %}var(--jain-green){% elif u.role=='regional_admin' %}#5B1A8A{% else %}var(--jain-red){% endif %};">
+          {{ u.name[0].upper() }}
+        </div>
         <div>
           <div class="sb-name">{{ u.name }}</div>
-          <div class="sb-role">{{ u.role|title }}</div>
+          <div class="sb-role">{{ u.role|replace('_',' ')|title }}</div>
         </div>
       </div>
       <div class="sb-loc">{{ region_label(u.region) }} · {{ u.city }}{% if u.country %}, {{ u.country }}{% endif %}</div>
 
-      {# Admin region switcher #}
       {% if u.role == 'admin' %}
       <div class="sb-region-switch">
         <div class="sb-region-label">Switch Region View</div>
@@ -336,47 +492,45 @@
       {% endif %}
     </div>
 
-    <!-- Nav links -->
     <div class="sb-body">
       {% if u.role == 'admin' %}
         <div class="sb-section">Overview</div>
-        <a href="/admin"      class="sb-link {{ 'active' if request.path=='/admin' }}"><span class="si">📊</span> Dashboard</a>
+        <a href="/admin" class="sb-link {{ 'active' if request.path=='/admin' }}"><span class="si">📊</span> Dashboard</a>
         <div class="sb-section">People</div>
         <a href="/admin/students"   class="sb-link {{ 'active' if '/admin/students' in request.path }}"><span class="si">🎓</span> Students</a>
         <a href="/admin/teachers"   class="sb-link {{ 'active' if '/admin/teachers' in request.path }}"><span class="si">📖</span> Teachers</a>
         <a href="/admin/volunteers" class="sb-link {{ 'active' if '/admin/volunteers' in request.path }}"><span class="si">🤝</span> Volunteers</a>
         <div class="sb-section">Content</div>
-        <a href="/admin/events" class="sb-link {{ 'active' if '/admin/events' in request.path }}"><span class="si">📅</span> Events</a>
-        <a href="/materials"    class="sb-link {{ 'active' if request.path=='/materials' }}"><span class="si">📂</span> Study Materials</a>
+        <a href="/admin/events"     class="sb-link {{ 'active' if '/admin/events' in request.path }}"><span class="si">📅</span> Events</a>
+        <a href="/materials"        class="sb-link {{ 'active' if request.path=='/materials' }}"><span class="si">📂</span> Study Materials</a>
         <a href="/materials/upload" class="sb-link {{ 'active' if '/materials/upload' in request.path }}"><span class="si">⬆️</span> Upload Material</a>
-        <a href="/classes"      class="sb-link"><span class="si">📚</span> Curriculum</a>
+        <a href="/classes"          class="sb-link"><span class="si">📚</span> Curriculum</a>
         <div class="sb-section">Admin</div>
         <a href="/admin/location-requests" class="sb-link {{ 'active' if '/admin/location-requests' in request.path }}">
           <span class="si">📍</span> Location Requests
-          {% set pending_count = namespace(n=0) %}
-          {% for req in [] %}{% endfor %}
-          <span class="sb-badge" id="pending-badge" style="display:none;">!</span>
+          <span class="sb-badge" id="pending-badge" style="display:none;"></span>
         </a>
         <a href="/enquiry" class="sb-link"><span class="si">✉️</span> Enquiries</a>
         <a href="/donate"  class="sb-link"><span class="si">💛</span> Donate</a>
 
       {% elif u.role == 'regional_admin' %}
         <div class="sb-section">{{ region_label(u.region) }} Admin</div>
-        <a href="/radmin"          class="sb-link {{ 'active' if request.path=='/radmin' }}"><span class="si">📊</span> Dashboard</a>
-        <a href="/radmin/students" class="sb-link {{ 'active' if '/radmin/students' in request.path }}"><span class="si">🎓</span> My Students</a>
-        <a href="/radmin/teachers" class="sb-link {{ 'active' if '/radmin/teachers' in request.path }}"><span class="si">📖</span> My Teachers</a>
-        <a href="/radmin/events"   class="sb-link {{ 'active' if '/radmin/events' in request.path }}"><span class="si">📅</span> Events</a>
+        <a href="/radmin"           class="sb-link {{ 'active' if request.path=='/radmin' }}"><span class="si">📊</span> Dashboard</a>
+        <a href="/radmin/students"  class="sb-link {{ 'active' if '/radmin/students' in request.path }}"><span class="si">🎓</span> My Students</a>
+        <a href="/radmin/teachers"  class="sb-link {{ 'active' if '/radmin/teachers' in request.path }}"><span class="si">📖</span> My Teachers</a>
+        <a href="/radmin/events"    class="sb-link {{ 'active' if '/radmin/events' in request.path }}"><span class="si">📅</span> Events</a>
         <div class="sb-section">Content</div>
         <a href="/materials"        class="sb-link {{ 'active' if request.path=='/materials' }}"><span class="si">📂</span> Study Materials</a>
         <a href="/materials/upload" class="sb-link {{ 'active' if '/materials/upload' in request.path }}"><span class="si">⬆️</span> Upload Material</a>
         <div class="sb-section">Account</div>
         <a href="/enquiry" class="sb-link"><span class="si">✉️</span> Contact Super Admin</a>
+
       {% elif u.role == 'teacher' %}
         <div class="sb-section">My Portal</div>
-        <a href="/teacher"             class="sb-link {{ 'active' if request.path=='/teacher' }}"><span class="si">📊</span> Dashboard</a>
-        <a href="/teacher/students"    class="sb-link {{ 'active' if '/teacher/students' in request.path }}"><span class="si">🎓</span> My Students</a>
-        <a href="/teacher/classes"     class="sb-link {{ 'active' if '/teacher/classes' in request.path }}"><span class="si">📋</span> Class Roster</a>
-        <a href="/teacher/promotions"  class="sb-link {{ 'active' if '/teacher/promotions' in request.path }}"><span class="si">⬆️</span> Promotions</a>
+        <a href="/teacher"              class="sb-link {{ 'active' if request.path=='/teacher' }}"><span class="si">📊</span> Dashboard</a>
+        <a href="/teacher/students"     class="sb-link {{ 'active' if '/teacher/students' in request.path }}"><span class="si">🎓</span> My Students</a>
+        <a href="/teacher/classes"      class="sb-link {{ 'active' if '/teacher/classes' in request.path }}"><span class="si">📋</span> Class Roster</a>
+        <a href="/teacher/promotions"   class="sb-link {{ 'active' if '/teacher/promotions' in request.path }}"><span class="si">⬆️</span> Promotions</a>
         <div class="sb-section">Videos</div>
         <a href="/teacher/video-requests" class="sb-link {{ 'active' if '/teacher/video-requests' in request.path }}"><span class="si">🎬</span> Video Requests</a>
         <a href="/teacher/videos"         class="sb-link {{ 'active' if '/teacher/videos' in request.path }}"><span class="si">📹</span> Student Videos</a>
@@ -425,18 +579,18 @@
         </div>
       {% endif %}
     {% endwith %}
+
     <main>{% block content %}{% endblock %}</main>
 
     {% if not u %}
     <footer class="public-footer">
-      <div class="jain-bar" style="margin-bottom:2rem;border-radius:2px;opacity:0.5;"></div>
       <div class="footer-inner">
         <div>
           <div class="footer-brand-logo">
             <img src="/static/images/logo.png" alt="GJPP">
             <span>Global Jain Pramanik Pathshala</span>
           </div>
-          <p>Making Jain education accessible to families across 6 continents.</p>
+          <p>Making Jain education accessible to families across 6 continents — through structured learning and a connected global community.</p>
         </div>
         <div class="footer-col">
           <h4>Learn</h4>
@@ -461,15 +615,44 @@
       </div>
     </footer>
     {% endif %}
-  </div><!-- /app-content -->
-</div><!-- /app-shell -->
+  </div>
+</div>
 
 <script>
-// Highlight pending badge dynamically
+/* ── Pending badge ── */
 fetch('/api/stats').then(r=>r.json()).then(d=>{
-  const b = document.getElementById('pending-badge');
-  if(b && d.pending_requests > 0){ b.textContent = d.pending_requests; b.style.display='inline'; }
+  const b=document.getElementById('pending-badge');
+  if(b&&d.pending_requests>0){b.textContent=d.pending_requests;b.style.display='inline';}
 }).catch(()=>{});
+
+/* ── Mobile sidebar toggle ── */
+const toggle  = document.getElementById('sb-toggle');
+const sidebar = document.getElementById('app-sidebar');
+const overlay = document.getElementById('sb-overlay');
+
+function openSidebar(){
+  if(!sidebar) return;
+  sidebar.classList.add('sb-open');
+  overlay && overlay.classList.add('sb-open');
+  document.body.style.overflow='hidden';
+}
+function closeSidebar(){
+  if(!sidebar) return;
+  sidebar.classList.remove('sb-open');
+  overlay && overlay.classList.remove('sb-open');
+  document.body.style.overflow='';
+}
+
+toggle  && toggle.addEventListener('click', openSidebar);
+overlay && overlay.addEventListener('click', closeSidebar);
+
+/* Close sidebar when a sidebar link is tapped on mobile */
+sidebar && sidebar.querySelectorAll('.sb-link, .sb-foot a').forEach(link=>{
+  link.addEventListener('click', ()=>{ if(window.innerWidth<=768) closeSidebar(); });
+});
+
+/* Resize: always close if going back to desktop */
+window.addEventListener('resize', ()=>{ if(window.innerWidth>768) closeSidebar(); });
 </script>
 {% block extra_js %}{% endblock %}
 </body>

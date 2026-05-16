@@ -2,171 +2,128 @@
 {% block title %}Teacher Dashboard - GJPP{% endblock %}
 {% block extra_css %}
 <style>
-.sidebar-link:hover,.sidebar-link.active{background:rgba(255,255,255,0.15);color:#fff;}
-.content{padding:2.5rem;}
-.page-title{font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.25rem;}
-.page-sub{color:var(--text-muted);font-size:0.875rem;margin-bottom:2rem;}
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;}
-.stat-box{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.5rem;position:relative;overflow:hidden;}
-.stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;}
-.stat-box.blue::before{background:var(--jain-blue);}
-.stat-box.green::before{background:var(--jain-green);}
-.stat-box.red::before{background:var(--jain-red);}
-.s-num{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:800;color:var(--jain-blue);line-height:1;}
-.s-lbl{font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.05em;}
-.section-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:1.5rem;}
-.section-card-header{padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
-.section-card-header h3{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);}
-.table{width:100%;border-collapse:collapse;}
-.table th{background:var(--jain-green);color:rgba(255,255,255,0.85);font-size:0.72rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:0.75rem 1rem;text-align:left;}
-.table td{padding:0.9rem 1rem;border-bottom:1px solid var(--border);font-size:0.875rem;vertical-align:middle;}
-.table tr:last-child td{border-bottom:none;}
-.table tr:hover td{background:rgba(26,122,60,0.03);}
-.tag{display:inline-flex;align-items:center;padding:0.2rem 0.65rem;border-radius:100px;font-size:0.72rem;font-weight:800;}
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.25rem;}
+.welcome-banner{border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;background:linear-gradient(135deg,var(--jain-green),var(--green-dark));}
+.wb-top{display:flex;align-items:center;gap:0.9rem;margin-bottom:0.75rem;}
+.wb-av{width:42px;height:42px;border-radius:50%;background:#fff;color:var(--jain-green);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:800;flex-shrink:0;}
+.wb-name{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:800;color:#fff;line-height:1.1;}
+.wb-role{font-size:0.7rem;color:rgba(255,255,255,0.6);}
+.wb-meta{display:flex;gap:1rem;flex-wrap:wrap;}
+.wb-item .wl{font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.4);margin-bottom:0.1rem;}
+.wb-item .wv{font-size:0.82rem;font-weight:800;color:#fff;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1.25rem;}
+.s-box{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1rem;position:relative;overflow:hidden;}
+.s-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.s-box.green::before{background:var(--jain-green);}
+.s-box.blue::before{background:var(--jain-blue);}
+.s-box.red::before{background:var(--jain-red);}
+.s-num{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:800;color:var(--jain-blue);line-height:1;}
+.s-lbl{font-size:0.66rem;font-weight:700;color:var(--text-muted);margin-top:0.2rem;text-transform:uppercase;letter-spacing:0.04em;}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.1rem;}
+.sc-head{padding:0.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:0.5rem;}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);}
+.info-banner{border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:0.75rem;font-size:0.84rem;}
+.info-banner.yellow{background:var(--yellow-light);border:1px solid rgba(245,197,24,0.3);color:var(--yellow-dark);}
+.ev-grid{display:grid;grid-template-columns:1fr;gap:0.75rem;padding:1rem 1.1rem;}
+@media(min-width:640px){.ev-grid{grid-template-columns:repeat(2,1fr);}}
+.tag{display:inline-flex;padding:0.14rem 0.5rem;border-radius:100px;font-size:0.64rem;font-weight:800;}
 .tag-green{background:var(--green-light);color:var(--green-dark);}
 .tag-blue{background:var(--blue-light);color:var(--jain-blue);}
-.avatar{width:30px;height:30px;border-radius:50%;background:var(--jain-green);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;margin-right:0.5rem;}
-.info-banner{border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;font-size:0.875rem;}
-.info-banner.yellow{background:var(--yellow-light);border:1px solid rgba(245,197,24,0.3);color:var(--yellow-dark);}
-.info-banner.green{background:var(--green-light);border:1px solid rgba(26,122,60,0.2);color:var(--green-dark);}
+.av{width:28px;height:28px;border-radius:50%;background:var(--jain-green);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;margin-right:0.4rem;flex-shrink:0;}
 </style>
 {% endblock %}
 {% block content %}
-<div style="padding:2rem 2.5rem;"><!-- Welcome banner -->
-    <div style="background:linear-gradient(135deg,var(--jain-green),var(--green-dark));border-radius:16px;padding:1.75rem 2rem;margin-bottom:1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
-      <div style="display:flex;align-items:center;gap:1.25rem;">
-        <div style="width:52px;height:52px;border-radius:50%;background:#fff;color:var(--jain-green);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:800;flex-shrink:0;">{{ user.name[0].upper() }}</div>
-        <div>
-          <div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:800;color:#fff;">Welcome back, {{ user.name.split()[0] }}!</div>
-          <div style="font-size:0.82rem;color:rgba(255,255,255,0.55);margin-top:0.1rem;">Teacher · {{ user.class_id or 'No class assigned' }}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
-        <div style="text-align:center;">
-          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:0.2rem;">Region</div>
-          <div style="font-size:0.9rem;font-weight:800;color:#fff;">{{ region.flag if region }} {{ region.name if region else user.region }}</div>
-        </div>
-        <div style="width:1px;height:32px;background:rgba(255,255,255,0.2);"></div>
-        <div style="text-align:center;">
-          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:0.2rem;">Country</div>
-          <div style="font-size:0.9rem;font-weight:800;color:#fff;">{{ user.country }}</div>
-        </div>
-        <div style="width:1px;height:32px;background:rgba(255,255,255,0.2);"></div>
-        <div style="text-align:center;">
-          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:0.2rem;">City</div>
-          <div style="font-size:0.9rem;font-weight:800;color:#fff;">{{ user.city }}</div>
-        </div>
-        <div style="width:1px;height:32px;background:rgba(255,255,255,0.2);"></div>
-        <div style="text-align:center;">
-          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.45);margin-bottom:0.2rem;">My Students</div>
-          <div style="font-size:0.9rem;font-weight:800;color:#fff;">{{ students|length }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="page-title">My Teaching Dashboard</div>
-    <div class="page-sub">Showing classes and events for {{ region.name if region else user.region }} · {{ user.city }}, {{ user.country }}</div>
-
-    <!-- Location pending notice -->
-    {% if pending_req %}
-    <div class="info-banner yellow">
-      ⏳ <strong>Location update pending:</strong> Your request to move to {{ pending_req.new_city }}, {{ pending_req.new_country }} is awaiting admin approval.
-    </div>
-    {% endif %}
-
-    <!-- Stats -->
-    <div class="stats-row">
-      <div class="stat-box blue">
-        <div class="s-num">{{ students|length }}</div>
-        <div class="s-lbl">My Students</div>
-      </div>
-      <div class="stat-box green">
-        <div class="s-num">{{ events|length }}</div>
-        <div class="s-lbl">Regional Events</div>
-      </div>
-      <div class="stat-box red">
-        <div class="s-num">{{ user.class_id.split('-')[1]|upper if user.class_id else 'N/A' }}</div>
-        <div class="s-lbl">My Class Level</div>
-      </div>
-    </div>
-
-    <!-- My Students -->
-    <div class="section-card">
-      <div class="section-card-header">
-        <h3>My Class Students</h3>
-        <span style="font-size:0.78rem;color:var(--text-muted);background:var(--green-light);color:var(--green-dark);padding:0.25rem 0.75rem;border-radius:100px;font-weight:800;">
-          Class: {{ user.class_id or 'Not assigned' }}
-        </span>
-      </div>
-      {% if students %}
-      <table class="table">
-        <thead>
-          <tr><th>Student</th><th>Age</th><th>Level</th><th>City</th><th>Parent</th><th>Contact</th><th>Enrolled</th></tr>
-        </thead>
-        <tbody>
-          {% for s in students %}
-          <tr>
-            <td>
-              <div style="display:flex;align-items:center;">
-                <div class="avatar">{{ s.name[0] }}</div>
-                <div>
-                  <div style="font-weight:700;">{{ s.name }}</div>
-                  <div style="font-size:0.72rem;color:var(--text-muted);">{{ s.gender }}</div>
-                </div>
-              </div>
-            </td>
-            <td>{{ s.age }}</td>
-            <td><span class="tag tag-green">{{ s.level }}</span></td>
-            <td>{{ s.city }}</td>
-            <td>
-              <div style="font-weight:600;font-size:0.85rem;">{{ s.parent1_name }}</div>
-            </td>
-            <td style="font-size:0.78rem;color:var(--text-muted);">{{ s.parent1_whatsapp }}</td>
-            <td style="font-size:0.78rem;color:var(--text-muted);">{{ s.registered_at }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <div style="text-align:center;padding:3rem 2rem;color:var(--text-muted);">
-        <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎓</div>
-        <div style="font-weight:700;color:var(--jain-green);">No students in your class yet</div>
-        <p style="font-size:0.875rem;margin-top:0.4rem;">Students will appear here once enrolled in your class.</p>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Regional Events -->
-    <div class="section-card">
-      <div class="section-card-header">
-        <h3>Events in Your Region</h3>
-      </div>
-      {% if events %}
-      <div style="padding:1.25rem 1.5rem;display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;">
-        {% for e in events %}
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;border-left:3px solid var(--jain-green);">
-          <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;color:var(--jain-green);letter-spacing:0.07em;margin-bottom:0.3rem;">{{ e.type }}</div>
-          <div style="font-weight:700;color:var(--jain-blue);margin-bottom:0.25rem;">{{ e.title }}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted);">📅 {{ e.date }}</div>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:0.875rem;">No upcoming events in your region.</div>
-      {% endif %}
-    </div>
-
-    <!-- Location Update CTA -->
-    <div style="background:linear-gradient(135deg,var(--jain-green),var(--green-dark));border-radius:16px;padding:2rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+<div class="pg">
+  <!-- Welcome banner -->
+  <div class="welcome-banner">
+    <div class="wb-top">
+      <div class="wb-av">{{ user.name[0].upper() }}</div>
       <div>
-        <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:0.3rem;">Moved to a new location?</div>
-        <p style="color:rgba(255,255,255,0.65);font-size:0.875rem;">Request a location update and an admin will approve the change.</p>
+        <div class="wb-name">Welcome, {{ user.name.split()[0] }}!</div>
+        <div class="wb-role">Teacher · {{ user.class_id or 'No class assigned' }}</div>
       </div>
-      {% if not pending_req %}
-      <a href="/request-location-update" class="btn btn-white">📍 Request Location Update</a>
-      {% else %}
-      <span style="background:rgba(255,255,255,0.15);color:#fff;padding:0.5rem 1.2rem;border-radius:8px;font-size:0.875rem;font-weight:700;">⏳ Request Pending</span>
-      {% endif %}
     </div>
+    <div class="wb-meta">
+      <div class="wb-item"><div class="wl">Region</div><div class="wv">{{ region.flag if region }} {{ region.name if region }}</div></div>
+      <div class="wb-item"><div class="wl">Country</div><div class="wv">{{ user.country }}</div></div>
+      <div class="wb-item"><div class="wl">City</div><div class="wv">{{ user.city }}</div></div>
+      <div class="wb-item"><div class="wl">Students</div><div class="wv">{{ students|length }}</div></div>
+    </div>
+  </div>
+
+  {% if pending_req %}
+  <div class="info-banner yellow">⏳ <strong>Location update pending:</strong> Request to move to {{ pending_req.new_city }}, {{ pending_req.new_country }} is awaiting admin approval.</div>
+  {% endif %}
+
+  <div class="pg-title">My Teaching Dashboard</div>
+  <div class="pg-sub">Showing classes and events for {{ region.name if region }} · {{ user.city }}, {{ user.country }}</div>
+
+  <div class="stats-row">
+    <div class="s-box green"><div class="s-num">{{ students|length }}</div><div class="s-lbl">My Students</div></div>
+    <div class="s-box blue"><div class="s-num">{{ events|length }}</div><div class="s-lbl">Events</div></div>
+    <div class="s-box red"><div class="s-num" style="font-size:1.1rem;">{{ user.class_id.split('-')[1]|upper if user.class_id else 'N/A' }}</div><div class="s-lbl">My Level</div></div>
+  </div>
+
+  <!-- My Students -->
+  <div class="sc">
+    <div class="sc-head">
+      <h3>My Class Students</h3>
+      <a href="/teacher/students" class="btn btn-green btn-sm">View All →</a>
+    </div>
+    {% if students %}
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th>Age</th><th>Level</th><th>City</th><th>Parent</th></tr></thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td><div style="display:flex;align-items:center;"><div class="av">{{ s.name[0] }}</div><strong style="font-size:0.84rem;">{{ s.name }}</strong></div></td>
+          <td>{{ s.age }}</td>
+          <td><span class="tag tag-green">{{ s.level }}</span></td>
+          <td style="font-size:0.78rem;">{{ s.city }}</td>
+          <td style="font-size:0.78rem;">{{ s.parent1_name }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.875rem;">No students in your class yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Events -->
+  <div class="sc">
+    <div class="sc-head"><h3>Events in Your Region</h3></div>
+    {% if events %}
+    <div class="ev-grid">
+      {% for e in events %}
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0.85rem;border-left:3px solid var(--jain-green);">
+        <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;color:var(--jain-green);letter-spacing:0.07em;margin-bottom:0.25rem;">{{ e.type }}</div>
+        <div style="font-weight:700;color:var(--jain-blue);font-size:0.9rem;margin-bottom:0.2rem;">{{ e.title }}</div>
+        <div style="font-size:0.76rem;color:var(--text-muted);">📅 {{ e.date }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.875rem;">No upcoming events in your region.</div>
+    {% endif %}
+  </div>
+
+  <!-- Location CTA -->
+  <div style="background:linear-gradient(135deg,var(--jain-green),var(--green-dark));border-radius:14px;padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:800;color:#fff;margin-bottom:0.25rem;">Moved to a new location?</div>
+      <p style="color:rgba(255,255,255,0.65);font-size:0.82rem;">Request a location update from admin.</p>
+    </div>
+    {% if not pending_req %}
+    <a href="/request-location-update" class="btn btn-white btn-sm">📍 Update Location</a>
+    {% else %}
+    <span style="background:rgba(255,255,255,0.15);color:#fff;padding:0.4rem 1rem;border-radius:8px;font-size:0.82rem;font-weight:700;">⏳ Pending</span>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

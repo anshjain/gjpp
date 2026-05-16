@@ -2,126 +2,98 @@
 {% block title %}{{ 'Edit' if action=='edit' else 'Add' }} Student - Admin GJPP{% endblock %}
 {% block extra_css %}
 <style>
-.content{padding:2.5rem;background:var(--bg);display:flex;justify-content:center;align-items:flex-start;}
-.form-card{background:#fff;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;width:100%;max-width:780px;box-shadow:var(--shadow-lg);}
-.form-card-header{padding:2rem 2.5rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));position:relative;overflow:hidden;}
-.form-card-header::before{content:'🎓';position:absolute;right:2rem;top:50%;transform:translateY(-50%);font-size:5rem;opacity:0.12;}
-.form-card-header h2{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:#fff;}
-.form-card-header p{color:rgba(255,255,255,0.6);font-size:0.875rem;margin-top:0.3rem;}
-.form-body{padding:2.5rem;}
-.form-section-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);margin:1.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--jain-blue);}
-.form-section-title:first-child{margin-top:0;}
-.level-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0.6rem;}
+.pg{padding:1.5rem;display:flex;justify-content:center;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;overflow:hidden;width:100%;max-width:720px;box-shadow:var(--shadow-lg);}
+.form-head{padding:1.5rem 1.75rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));position:relative;overflow:hidden;}
+.form-head::before{content:'🎓';position:absolute;right:1.5rem;top:50%;transform:translateY(-50%);font-size:4rem;opacity:0.1;}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:800;color:#fff;}
+.form-head p{color:rgba(255,255,255,0.6);font-size:0.82rem;margin-top:0.25rem;}
+.form-body{padding:1.5rem 1.75rem;}
+.fsect{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:var(--jain-blue);margin:1.25rem 0 0.75rem;padding-bottom:0.4rem;border-bottom:2px solid var(--jain-blue);}
+.fsect:first-child{margin-top:0;}
+/* Level grid — 2 cols on mobile, 5 on wide */
+.level-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.5rem;}
+@media(min-width:500px){.level-grid{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:700px){.level-grid{grid-template-columns:repeat(5,1fr);}}
 .level-opt{position:relative;}
 .level-opt input{position:absolute;opacity:0;}
-.level-opt label{display:block;padding:0.7rem 0.5rem;border:1.5px solid var(--border);border-radius:9px;cursor:pointer;text-align:center;transition:all 0.18s;background:var(--bg);}
-.level-opt label strong{display:block;font-size:0.82rem;color:var(--jain-blue);}
-.level-opt label span{font-size:0.68rem;color:var(--text-muted);}
+.level-opt label{display:block;padding:0.65rem 0.5rem;border:1.5px solid var(--border);border-radius:9px;cursor:pointer;text-align:center;transition:all 0.18s;background:var(--bg);}
+.level-opt label strong{display:block;font-size:0.8rem;color:var(--jain-blue);}
+.level-opt label span{font-size:0.66rem;color:var(--text-muted);}
 .level-opt input:checked + label{border-color:var(--jain-blue);background:var(--blue-light);}
+/* Gender row */
+.gender-row{display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.4rem;}
+.gender-row label{display:flex;align-items:center;gap:0.4rem;padding:0.5rem 0.85rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;background:var(--bg);transition:all 0.18s;}
+.gender-row input{accent-color:var(--jain-blue);width:14px;height:14px;}
+.gender-row label:has(input:checked){border-color:var(--jain-blue);background:var(--blue-light);}
 </style>
 {% endblock %}
 {% block content %}
-<div style="padding:2rem 2.5rem;"><div class="form-card">
-      <div class="form-card-header">
-        <h2>{{ '✏️ Edit Student' if action=='edit' else '➕ Add New Student' }}</h2>
-        <p>{{ 'Update student information and class assignment.' if action=='edit' else 'Enroll a new student into the GJPP platform.' }}</p>
-      </div>
-      <div class="form-body">
-        <form method="POST">
-          <div class="form-section-title">Student Information</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Full Name <span>*</span></label>
-              <input type="text" name="name" class="form-input" required placeholder="Student's full name" value="{{ student.name if student else '' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Age <span>*</span></label>
-              <input type="number" name="age" class="form-input" required min="3" max="99" placeholder="Age" value="{{ student.age if student else '' }}">
-            </div>
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>{{ '✏️ Edit Student' if action=='edit' else '➕ Add New Student' }}</h2>
+      <p>{{ 'Update student information.' if action=='edit' else 'Enroll a new student into the GJPP platform.' }}</p>
+    </div>
+    <div class="form-body">
+      <form method="POST">
+        <div class="fsect">Student Information</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Full Name <span>*</span></label><input type="text" name="name" class="form-input" required placeholder="Student's full name" value="{{ student.name if student else '' }}"></div>
+          <div class="form-group"><label class="form-label">Age <span>*</span></label><input type="number" name="age" class="form-input" required min="3" max="99" placeholder="Age" value="{{ student.age if student else '' }}"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <div class="gender-row">
+            {% for g in ['Male','Female','Other','Prefer not to say'] %}
+            <label><input type="radio" name="gender" value="{{ g }}" {% if student and student.gender==g %}checked{% endif %}>{{ g }}</label>
+            {% endfor %}
           </div>
-          <div class="form-group">
-            <label class="form-label">Gender</label>
-            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.4rem;">
-              {% for g in ['Male','Female','Other','Prefer not to say'] %}
-              <label style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.9rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.85rem;font-weight:600;background:var(--bg);transition:all 0.18s;">
-                <input type="radio" name="gender" value="{{ g }}" {% if student and student.gender==g %}checked{% endif %} style="accent-color:var(--jain-blue);">
-                {{ g }}
-              </label>
-              {% endfor %}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Class Level <span>*</span></label>
+          <div class="level-grid">
+            {% for l in levels %}
+            <div class="level-opt">
+              <input type="radio" name="level" id="lvl-{{ l.id }}" value="{{ l.id }}" {% if student and student.level==l.id %}checked{% endif %} required>
+              <label for="lvl-{{ l.id }}"><strong>{{ l.name }}</strong><span>{{ l.age }}</span></label>
             </div>
+            {% endfor %}
           </div>
-          <div class="form-group">
-            <label class="form-label">Class Level <span>*</span></label>
-            <div class="level-grid">
-              {% for l in levels %}
-              <div class="level-opt">
-                <input type="radio" name="level" id="lvl-{{ l.id }}" value="{{ l.id }}" {% if student and student.level==l.id %}checked{% endif %} required>
-                <label for="lvl-{{ l.id }}">
-                  <strong>{{ l.name }}</strong>
-                  <span>{{ l.age }}</span>
-                </label>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
+        </div>
 
-          <div class="form-section-title">Location</div>
-          <div class="form-group">
-            <label class="form-label">Region <span>*</span></label>
-            <select name="region" class="form-select" required>
-              <option value="">Select region…</option>
-              {% for r in regions %}
-              <option value="{{ r.id }}" {% if student and student.region==r.id %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Country <span>*</span></label>
-              <input type="text" name="country" class="form-input" required placeholder="e.g. United States" value="{{ student.country if student else '' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">City</label>
-              <input type="text" name="city" class="form-input" placeholder="e.g. New York" value="{{ student.city if student else '' }}">
-            </div>
-          </div>
+        <div class="fsect">Location</div>
+        <div class="form-group">
+          <label class="form-label">Region <span>*</span></label>
+          <select name="region" class="form-select" required>
+            <option value="">Select region…</option>
+            {% for r in regions %}<option value="{{ r.id }}" {% if student and student.region==r.id %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Country <span>*</span></label><input type="text" name="country" class="form-input" required placeholder="e.g. United States" value="{{ student.country if student else '' }}"></div>
+          <div class="form-group"><label class="form-label">City</label><input type="text" name="city" class="form-input" placeholder="e.g. New York" value="{{ student.city if student else '' }}"></div>
+        </div>
 
-          <div class="form-section-title">Parent / Guardian (Primary)</div>
-          <div class="form-group">
-            <label class="form-label">Parent Name <span>*</span></label>
-            <input type="text" name="parent1_name" class="form-input" required placeholder="Full name" value="{{ student.parent1_name if student else '' }}">
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Parent Email <span>*</span></label>
-              <input type="email" name="parent1_email" class="form-input" required placeholder="parent@email.com" value="{{ student.parent1_email if student else '' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Parent WhatsApp <span>*</span></label>
-              <input type="tel" name="parent1_whatsapp" class="form-input" required placeholder="+1 555 000 0000" value="{{ student.parent1_whatsapp if student else '' }}">
-            </div>
-          </div>
+        <div class="fsect">Parent / Guardian (Primary)</div>
+        <div class="form-group"><label class="form-label">Parent Name <span>*</span></label><input type="text" name="parent1_name" class="form-input" required value="{{ student.parent1_name if student else '' }}"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Parent Email <span>*</span></label><input type="email" name="parent1_email" class="form-input" required value="{{ student.parent1_email if student else '' }}"></div>
+          <div class="form-group"><label class="form-label">WhatsApp <span>*</span></label><input type="tel" name="parent1_whatsapp" class="form-input" required placeholder="+1 555 000 0000" value="{{ student.parent1_whatsapp if student else '' }}"></div>
+        </div>
 
-          <div class="form-section-title">Parent / Guardian (Secondary) <span style="font-size:0.8rem;font-weight:400;color:var(--text-muted);">Optional</span></div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Parent 2 Name</label>
-              <input type="text" name="parent2_name" class="form-input" placeholder="Full name (optional)" value="{{ student.parent2_name if student else '' }}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Parent 2 WhatsApp</label>
-              <input type="tel" name="parent2_whatsapp" class="form-input" placeholder="+1 555 000 0000 (optional)" value="{{ student.parent2_whatsapp if student else '' }}">
-            </div>
-          </div>
+        <div class="fsect">Parent / Guardian (Secondary) <span style="font-size:0.78rem;font-weight:400;color:var(--text-muted);">Optional</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Name</label><input type="text" name="parent2_name" class="form-input" value="{{ student.parent2_name if student else '' }}"></div>
+          <div class="form-group"><label class="form-label">WhatsApp</label><input type="tel" name="parent2_whatsapp" class="form-input" value="{{ student.parent2_whatsapp if student else '' }}"></div>
+        </div>
 
-          <div style="display:flex;gap:1rem;margin-top:1.5rem;">
-            <button type="submit" class="btn btn-blue btn-lg" style="flex:1;justify-content:center;">
-              {{ '✅ Save Changes' if action=='edit' else '🎓 Enroll Student' }}
-            </button>
-            <a href="/admin/students" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
-          </div>
-        </form>
-      </div>
+        <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+          <button type="submit" class="btn btn-blue btn-lg" style="flex:1;justify-content:center;">{{ '✅ Save' if action=='edit' else '🎓 Enroll Student' }}</button>
+          <a href="/admin/students" class="btn btn-outline-blue" style="align-self:center;">Cancel</a>
+        </div>
+      </form>
     </div>
   </div>
 </div>

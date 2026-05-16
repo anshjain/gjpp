@@ -2,126 +2,92 @@
 {% block title %}Students - Admin GJPP{% endblock %}
 {% block extra_css %}
 <style>
-.sidebar { background:var(--jain-blue); padding:2rem 0; position:sticky; top:71px; height:calc(100vh - 71px); overflow-y:auto; }
-.sidebar-label { font-size:0.65rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.35); padding:0.75rem 1.75rem 0.4rem; }
-.sidebar-link { display:flex; align-items:center; gap:0.7rem; padding:0.62rem 1rem; margin:0 0.75rem 0.15rem; border-radius:8px; color:rgba(255,255,255,0.65); text-decoration:none; font-size:0.875rem; font-weight:700; transition:all 0.18s; }
-.sidebar-link:hover, .sidebar-link.active { background:rgba(255,255,255,0.12); color:#fff; }
-.sidebar-badge { margin-left:auto; background:var(--jain-red); color:#fff; font-size:0.65rem; font-weight:800; padding:0.15rem 0.5rem; border-radius:100px; }
-.content { padding:2.5rem; }
-.page-title { font-family:'Playfair Display',serif; font-size:2rem; font-weight:800; color:var(--jain-blue); margin-bottom:0.25rem; }
-.page-sub { color:var(--text-muted); font-size:0.875rem; margin-bottom:2rem; }
-.filter-bar { background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:1.5rem; margin-bottom:1.5rem; }
-.filter-bar form { display:grid; grid-template-columns:repeat(5,1fr) auto; gap:0.75rem; align-items:end; }
-.filter-label { font-size:0.75rem; font-weight:800; color:var(--jain-blue); margin-bottom:0.3rem; }
-.section-card { background:#fff; border:1.5px solid var(--border); border-radius:16px; overflow:hidden; }
-.section-card-header { padding:1.25rem 1.5rem; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
-.section-card-header h3 { font-family:'Playfair Display',serif; font-size:1.2rem; font-weight:700; color:var(--jain-blue); }
-.table { width:100%; border-collapse:collapse; }
-.table th { background:var(--jain-blue); color:rgba(255,255,255,0.75); font-size:0.72rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:0.75rem 1rem; text-align:left; }
-.table td { padding:0.9rem 1rem; border-bottom:1px solid var(--border); font-size:0.875rem; vertical-align:middle; }
-.table tr:last-child td { border-bottom:none; }
-.table tr:hover td { background:rgba(13,43,110,0.03); }
-.tag { display:inline-flex; align-items:center; padding:0.2rem 0.65rem; border-radius:100px; font-size:0.72rem; font-weight:800; }
-.tag-blue { background:var(--blue-light); color:var(--jain-blue); }
-.tag-green { background:var(--green-light); color:var(--green-dark); }
-.avatar { width:32px; height:32px; border-radius:50%; background:var(--jain-blue); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:800; margin-right:0.5rem; flex-shrink:0; }
-.empty-state { text-align:center; padding:4rem 2rem; color:var(--text-muted); }
-.empty-state .icon { font-size:3rem; margin-bottom:1rem; }
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.25rem;}
+.filter-bar{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1rem 1.1rem;margin-bottom:1.25rem;}
+.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;}
+.filter-label{font-size:0.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.25rem;}
+.filter-actions{display:flex;gap:0.5rem;margin-top:0.6rem;}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.sc-head{padding:0.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:0.5rem;}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);}
+.av{width:30px;height:30px;border-radius:50%;background:var(--jain-blue);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;margin-right:0.4rem;flex-shrink:0;}
+.tag{display:inline-flex;padding:0.14rem 0.5rem;border-radius:100px;font-size:0.64rem;font-weight:800;}
+.tag-blue{background:var(--blue-light);color:var(--jain-blue);}
+@media(min-width:640px){.filter-grid{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:900px){.filter-grid{grid-template-columns:repeat(5,1fr) auto;} .filter-actions{margin-top:0;align-self:flex-end;}}
 </style>
 {% endblock %}
 {% block content %}
-<div style="padding:2rem 2.5rem;"><div class="page-title">Students</div>
-    <div class="page-sub">{{ students|length }} result{{ 's' if students|length != 1 }} · Filter by region, country, city, name or parent</div>
+<div class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+    <div>
+      <div class="pg-title">Students</div>
+      <div class="pg-sub">{{ students|length }} result{{ 's' if students|length != 1 }}</div>
+    </div>
+    <a href="/admin/students/new" class="btn btn-green btn-sm">+ Enroll</a>
+  </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-bar">
-      <form method="GET" action="/admin/students">
-        <div>
-          <div class="filter-label">Name</div>
-          <input type="text" name="name" value="{{ q_name }}" placeholder="Student name…" class="form-input" style="height:38px;padding:0.4rem 0.75rem;">
-        </div>
-        <div>
-          <div class="filter-label">Region</div>
-          <select name="region" class="form-select" style="height:38px;padding:0.4rem 0.75rem;">
-            <option value="">All Regions</option>
+  <div class="filter-bar">
+    <form method="GET">
+      <div class="filter-grid">
+        <div><div class="filter-label">Name</div><input type="text" name="name" value="{{ q_name }}" placeholder="Name…" class="form-input" style="height:36px;padding:0.3rem 0.65rem;font-size:0.82rem;"></div>
+        <div><div class="filter-label">Region</div>
+          <select name="region" class="form-select" style="height:36px;padding:0.3rem 0.5rem;font-size:0.82rem;">
+            <option value="">All</option>
             {% for r in regions %}<option value="{{ r.id }}" {% if r.id==q_region %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>{% endfor %}
           </select>
         </div>
-        <div>
-          <div class="filter-label">Country</div>
-          <input type="text" name="country" value="{{ q_country }}" placeholder="Country…" class="form-input" style="height:38px;padding:0.4rem 0.75rem;">
-        </div>
-        <div>
-          <div class="filter-label">City</div>
-          <input type="text" name="city" value="{{ q_city }}" placeholder="City…" class="form-input" style="height:38px;padding:0.4rem 0.75rem;">
-        </div>
-        <div>
-          <div class="filter-label">Parent</div>
-          <input type="text" name="parent" value="{{ q_parent }}" placeholder="Parent name…" class="form-input" style="height:38px;padding:0.4rem 0.75rem;">
-        </div>
-        <div style="display:flex;gap:0.5rem;align-items:flex-end;">
-          <button type="submit" class="btn btn-blue" style="height:38px;padding:0.4rem 1rem;white-space:nowrap;">Filter</button>
-          <a href="/admin/students" class="btn btn-outline-blue" style="height:38px;padding:0.4rem 0.75rem;">✕</a>
-        </div>
-      </form>
-    </div>
+        <div><div class="filter-label">Country</div><input type="text" name="country" value="{{ q_country }}" placeholder="Country…" class="form-input" style="height:36px;padding:0.3rem 0.65rem;font-size:0.82rem;"></div>
+        <div><div class="filter-label">City</div><input type="text" name="city" value="{{ q_city }}" placeholder="City…" class="form-input" style="height:36px;padding:0.3rem 0.65rem;font-size:0.82rem;"></div>
+        <div><div class="filter-label">Parent</div><input type="text" name="parent" value="{{ q_parent }}" placeholder="Parent…" class="form-input" style="height:36px;padding:0.3rem 0.65rem;font-size:0.82rem;"></div>
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-blue btn-sm">Filter</button>
+        <a href="/admin/students" class="btn btn-outline-blue btn-sm">✕ Clear</a>
+      </div>
+    </form>
+  </div>
 
-    <!-- Table -->
-    <div class="section-card">
-      <div class="section-card-header">
-        <h3>Student List</h3>
-        <a href="/admin/students/new" class="btn btn-green" style="font-size:0.8rem;padding:0.45rem 1rem;">+ Enroll Student</a>
-      </div>
-      {% if students %}
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Student</th>
-            <th>Age</th>
-            <th>Level</th>
-            <th>Region</th>
-            <th>Country</th>
-            <th>City</th>
-            <th>Parent</th>
-            <th>WhatsApp</th>
-            <th>Enrolled</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in students %}
-          <tr>
-            <td>
-              <div style="display:flex;align-items:center;">
-                <div class="avatar">{{ s.name[0] }}</div>
-                <div>
-                  <div style="font-weight:700;">{{ s.name }}</div>
-                  <div style="font-size:0.75rem;color:var(--text-muted);">{{ s.gender }}</div>
-                </div>
-              </div>
-            </td>
-            <td>{{ s.age }}</td>
-            <td><span class="tag tag-blue">{{ s.level }}</span></td>
-            <td>{{ region_label(s.region) }}</td>
-            <td>{{ s.country }}</td>
-            <td>{{ s.city }}</td>
-            <td>
-              <div style="font-weight:600;">{{ s.parent1_name }}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">{{ s.parent1_email }}</div>
-            </td>
-            <td style="font-size:0.82rem;color:var(--text-muted);">{{ s.parent1_whatsapp }}</td>
-            <td style="color:var(--text-muted);font-size:0.82rem;">{{ s.registered_at }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <div class="empty-state">
-        <div class="icon">🔍</div>
-        <div style="font-weight:700;color:var(--jain-blue);margin-bottom:0.5rem;">No students found</div>
-        <div style="font-size:0.875rem;">Try adjusting your filters.</div>
-      </div>
-      {% endif %}
+  <div class="sc">
+    <div class="sc-head">
+      <h3>Student List</h3>
+      <a href="/admin/students/new" class="btn btn-green btn-sm">+ Enroll Student</a>
     </div>
+    {% if students %}
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th>Age</th><th>Level</th><th>Region</th><th>City</th><th>Parent</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td><div style="display:flex;align-items:center;"><div class="av">{{ s.name[0] }}</div><div><strong style="font-size:0.85rem;">{{ s.name }}</strong><div style="font-size:0.68rem;color:var(--text-muted);">{{ s.gender }}</div></div></div></td>
+          <td>{{ s.age }}</td>
+          <td><span class="tag tag-blue">{{ s.level }}</span></td>
+          <td style="white-space:nowrap;font-size:0.8rem;">{{ region_label(s.region) }}</td>
+          <td style="font-size:0.8rem;">{{ s.city }}</td>
+          <td style="font-size:0.8rem;"><strong>{{ s.parent1_name }}</strong><div style="font-size:0.68rem;color:var(--text-muted);">{{ s.parent1_email }}</div></td>
+          <td>
+            <div style="display:flex;gap:0.3rem;">
+              <a href="/admin/students/{{ s.id }}/edit" class="btn btn-blue btn-sm">Edit</a>
+              <form method="POST" action="/admin/students/{{ s.id }}/delete" onsubmit="return confirm('Remove?')">
+                <button type="submit" class="btn btn-red btn-sm">✕</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem 1rem;color:var(--text-muted);">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
+      <div style="font-weight:700;color:var(--jain-blue);">No students found</div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

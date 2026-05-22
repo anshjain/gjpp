@@ -1,57 +1,59 @@
 {% extends "base.html" %}
 {% block title %}Start a Pathshala - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem 1rem;display:flex;justify-content:center;}
+@media(min-width:768px){.pg{padding:2rem 2.5rem;}}
+.form-card{background:#fff;border-radius:16px;border:1.5px solid var(--border);box-shadow:var(--shadow-lg);overflow:hidden;width:100%;max-width:640px;}
+.form-head{padding:1.5rem;background:linear-gradient(135deg,var(--jain-red),var(--red-dark));}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:800;color:#fff;}
+.form-head p{color:rgba(255,255,255,0.6);font-size:0.82rem;margin-top:0.2rem;}
+.form-body{padding:1.5rem;}
+@media(min-width:768px){.form-head{padding:2rem 2.5rem;}.form-body{padding:2rem 2.5rem;}}
+.intent-grid{display:grid;grid-template-columns:1fr;gap:0.45rem;}
+@media(min-width:420px){.intent-grid{grid-template-columns:repeat(3,1fr);}}
+.intent-item{display:flex;align-items:center;gap:0.45rem;padding:0.62rem 0.7rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;background:var(--bg);transition:all 0.18s;}
+.intent-item input{accent-color:var(--jain-red);width:14px;height:14px;flex-shrink:0;}
+.intent-item:has(input:checked){border-color:var(--jain-red);background:var(--red-light);color:var(--red-dark);}
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
-    <div class="page-header-inner">
-        <div class="badge badge-saffron" style="margin-bottom:1rem;">🏫 New Pathshala</div>
-        <h1>Start a Pathshala</h1>
-        <p>Want to bring Jain education to your community? Register your intent and our regional coordinator will guide you every step of the way.</p>
-    </div>
+  <div class="page-header-inner">
+    <div class="badge badge-red" style="margin-bottom:0.65rem;">🏫 New Pathshala</div>
+    <h1>Start a Pathshala</h1>
+    <p>Our regional coordinator will guide you every step of the way.</p>
+  </div>
 </div>
-<div class="container section-sm" style="max-width:680px;">
-    <div class="card">
-        <form method="POST" style="padding:2rem;">
-            <div class="form-group">
-                <label class="form-label">Your Name <span style="color:var(--blue);">*</span></label>
-                <input type="text" name="contact_name" class="form-input" required>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Email <span style="color:var(--blue);">*</span></label>
-                    <input type="email" name="email" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">WhatsApp <span style="color:var(--blue);">*</span></label>
-                    <input type="tel" name="whatsapp" class="form-input" required placeholder="+1 555 000 0000">
-                </div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Country <span style="color:var(--blue);">*</span></label>
-                    <input type="text" name="country" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">City <span style="color:var(--blue);">*</span></label>
-                    <input type="text" name="city" class="form-input" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Pathshala Format (select all that apply)</label>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-top:0.5rem;">
-                    {% for intent in ["Online Classes", "In-Person Classes", "Hybrid (Both)"] %}
-                    <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.875rem;background:var(--off-white);">
-                        <input type="checkbox" name="intent" value="{{ intent }}" style="accent-color:var(--blue);">
-                        {{ intent }}
-                    </label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Tell us about your community</label>
-                <textarea name="message" class="form-textarea" placeholder="How many families might participate? Do you have a venue? Any other details..."></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Submit Pathshala Request 🏫</button>
-        </form>
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>🏫 Pathshala Registration</h2>
+      <p>We'll contact you within 48 hours to guide you through setup.</p>
     </div>
+    <div class="form-body">
+      <form method="POST" action="/register/pathshala">
+        <div class="form-group"><label class="form-label">Your Name <span>*</span></label><input type="text" name="contact_name" class="form-input" required></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Email <span>*</span></label><input type="email" name="email" class="form-input" required></div>
+          <div class="form-group"><label class="form-label">WhatsApp <span>*</span></label><input type="tel" name="whatsapp" class="form-input" required placeholder="+1 555 000 0000"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Country <span>*</span></label><input type="text" name="country" class="form-input" required></div>
+          <div class="form-group"><label class="form-label">City <span>*</span></label><input type="text" name="city" class="form-input" required></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pathshala Format (select all that apply)</label>
+          <div class="intent-grid">
+            {% for intent in ["Online Classes","In-Person Classes","Hybrid (Both)"] %}
+            <label class="intent-item"><input type="checkbox" name="intent" value="{{ intent }}">{{ intent }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">About Your Community</label><textarea name="message" class="form-textarea" placeholder="How many families might participate? Do you have a venue?"></textarea></div>
+        <button type="submit" class="btn btn-red btn-lg btn-block">Submit Pathshala Request 🏫</button>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

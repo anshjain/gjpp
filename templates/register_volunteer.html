@@ -1,61 +1,68 @@
 {% extends "base.html" %}
 {% block title %}Volunteer - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem 1rem;display:flex;justify-content:center;}
+@media(min-width:768px){.pg{padding:2rem 2.5rem;}}
+.form-card{background:#fff;border-radius:16px;border:1.5px solid var(--border);box-shadow:var(--shadow-lg);overflow:hidden;width:100%;max-width:660px;}
+.form-head{padding:1.5rem;background:linear-gradient(135deg,var(--jain-green),var(--green-dark));}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:800;color:#fff;}
+.form-head p{color:rgba(255,255,255,0.6);font-size:0.82rem;margin-top:0.2rem;}
+.form-body{padding:1.5rem;}
+@media(min-width:768px){.form-head{padding:2rem 2.5rem;}.form-body{padding:2rem 2.5rem;}}
+.skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.45rem;}
+.skill-item{display:flex;align-items:center;gap:0.45rem;padding:0.52rem 0.65rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:600;background:var(--bg);transition:all 0.18s;}
+.skill-item input{accent-color:var(--jain-green);width:14px;height:14px;flex-shrink:0;}
+.skill-item:has(input:checked){border-color:var(--jain-green);background:var(--green-light);color:var(--green-dark);}
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
-    <div class="page-header-inner">
-        <div class="badge badge-gold" style="margin-bottom:1rem;">🤝 Volunteer</div>
-        <h1>Join Our Volunteer Team</h1>
-        <p>GJPP is powered by dedicated volunteers worldwide. Share your skills and help us preserve Jain dharma for future generations.</p>
-    </div>
+  <div class="page-header-inner">
+    <div class="badge badge-green" style="margin-bottom:0.65rem;">🤝 Volunteer</div>
+    <h1>Join Our Volunteer Team</h1>
+    <p>GJPP is powered by dedicated volunteers worldwide. Share your skills and help preserve Jain dharma for future generations.</p>
+  </div>
 </div>
-<div class="container section-sm" style="max-width:720px;">
-    <div class="card">
-        <form method="POST" style="padding:2rem;">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Full Name <span style="color:var(--blue);">*</span></label>
-                    <input type="text" name="name" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email <span style="color:var(--blue);">*</span></label>
-                    <input type="email" name="email" class="form-input" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">WhatsApp Number <span style="color:var(--blue);">*</span></label>
-                <input type="tel" name="whatsapp" class="form-input" required placeholder="+1 555 000 0000">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Skills (select all that apply)</label>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-top:0.5rem;">
-                    {% for skill in ["Teaching / Tutoring", "Technology / Web", "Design / Creative", "Event Coordination", "Translation / Languages", "Administrative Support", "Video / Media Production", "Community Outreach"] %}
-                    <label style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:0.875rem;">
-                        <input type="checkbox" name="skills" value="{{ skill }}" style="accent-color:var(--blue);">
-                        {{ skill }}
-                    </label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Availability</label>
-                <select name="availability" class="form-select">
-                    <option>Weekends only</option>
-                    <option>Weekdays only</option>
-                    <option>Both weekdays and weekends</option>
-                    <option>Flexible</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Preferred Region</label>
-                <select name="region" class="form-select">
-                    <option value="">No preference (Global)</option>
-                    {% for region in regions %}
-                    <option value="{{ region.id }}">{{ region.flag }} {{ region.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Submit Volunteer Application 🌟</button>
-        </form>
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>🤝 Volunteer Application</h2>
+      <p>Our coordinator will reach out within 48 hours.</p>
     </div>
+    <div class="form-body">
+      <form method="POST" action="/register/volunteer">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Full Name <span>*</span></label><input type="text" name="name" class="form-input" required placeholder="Your full name"></div>
+          <div class="form-group"><label class="form-label">Email <span>*</span></label><input type="email" name="email" class="form-input" required placeholder="your@email.com"></div>
+        </div>
+        <div class="form-group"><label class="form-label">WhatsApp Number <span>*</span></label><input type="tel" name="whatsapp" class="form-input" required placeholder="+1 555 000 0000"></div>
+        <div class="form-group">
+          <label class="form-label">Skills (select all that apply)</label>
+          <div class="skill-grid">
+            {% for skill in ["Teaching / Tutoring","Technology / Web","Design / Creative","Event Coordination","Translation / Languages","Administrative Support","Video / Media Production","Community Outreach"] %}
+            <label class="skill-item"><input type="checkbox" name="skills" value="{{ skill }}">{{ skill }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Availability</label>
+            <select name="availability" class="form-select">
+              <option>Weekends only</option><option>Weekdays only</option><option>Both weekdays and weekends</option><option>Flexible</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Preferred Region</label>
+            <select name="region" class="form-select">
+              <option value="">No preference (Global)</option>
+              {% for region in regions %}<option value="{{ region.id }}">{{ region.flag }} {{ region.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-green btn-lg btn-block">Submit Application 🌟</button>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

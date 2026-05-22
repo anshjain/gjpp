@@ -1,39 +1,44 @@
 {% extends "base.html" %}
 {% block title %}Register for {{ event.title }} - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem 1rem;display:flex;justify-content:center;}
+@media(min-width:768px){.pg{padding:2rem 2.5rem;}}
+.form-card{background:#fff;border-radius:16px;border:1.5px solid var(--border);box-shadow:var(--shadow-lg);overflow:hidden;width:100%;max-width:560px;}
+.form-head{padding:1.5rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));}
+.form-head .etype{font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.5);margin-bottom:0.2rem;}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:0.25rem;}
+.form-head .emeta{font-size:0.8rem;color:rgba(255,255,255,0.6);}
+.form-body{padding:1.5rem;}
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
-    <div class="page-header-inner">
-        <div class="badge badge-saffron" style="margin-bottom:1rem;">🎉 Event Registration</div>
-        <h1>{{ event.title }}</h1>
-        <p>{{ event.date }} · {{ event.region }} · {{ event.type }}</p>
-    </div>
+  <div class="page-header-inner">
+    <div class="badge badge-blue" style="margin-bottom:0.6rem;">🎉 Event Registration</div>
+    <h1>Register for Event</h1>
+  </div>
 </div>
-<div class="container section-sm" style="max-width:640px;">
-    <div class="card">
-        <div style="padding:2rem;">
-            <p style="color:var(--text-muted);margin-bottom:2rem;">{{ event.description }}</p>
-            <form method="POST">
-                <div class="form-group">
-                    <label class="form-label">Your Name <span style="color:var(--blue);">*</span></label>
-                    <input type="text" name="name" class="form-input" required placeholder="Full name">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email <span style="color:var(--blue);">*</span></label>
-                    <input type="email" name="email" class="form-input" required placeholder="your@email.com">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">WhatsApp Number</label>
-                    <input type="tel" name="whatsapp" class="form-input" placeholder="+1 555 000 0000">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Number of Attendees</label>
-                    <select name="attendees" class="form-select">
-                        <option>1</option><option>2</option><option>3</option><option>4</option><option>5+</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Confirm Registration 🙏</button>
-            </form>
-        </div>
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <div class="etype">{{ event.type }} · {{ region_label(event.region) if event.region != 'global' else '🌍 Global' }}</div>
+      <h2>{{ event.title }}</h2>
+      <div class="emeta">📅 {{ event.date }}</div>
     </div>
+    <div class="form-body">
+      <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.6;margin-bottom:1.25rem;">{{ event.description }}</p>
+      <form method="POST">
+        <div class="form-group"><label class="form-label">Your Name <span>*</span></label><input type="text" name="name" class="form-input" required placeholder="Full name"></div>
+        <div class="form-group"><label class="form-label">Email <span>*</span></label><input type="email" name="email" class="form-input" required placeholder="your@email.com"></div>
+        <div class="form-group"><label class="form-label">WhatsApp Number</label><input type="tel" name="whatsapp" class="form-input" placeholder="+1 555 000 0000"></div>
+        <div class="form-group">
+          <label class="form-label">Number of Attendees</label>
+          <select name="attendees" class="form-select"><option>1</option><option>2</option><option>3</option><option>4</option><option>5+</option></select>
+        </div>
+        <button type="submit" class="btn btn-blue btn-lg btn-block">Confirm Registration 🙏</button>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

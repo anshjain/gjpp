@@ -1,44 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Donate - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem 1rem;}
+@media(min-width:768px){.pg{padding:2rem 2.5rem;max-width:820px;margin:0 auto;}}
+.amount-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:2rem;}
+.amount-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.1rem 0.75rem;text-align:center;cursor:pointer;transition:all 0.2s;}
+.amount-card:hover{border-color:var(--jain-blue);transform:translateY(-2px);box-shadow:var(--shadow);}
+.amount-num{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;color:var(--jain-blue);line-height:1;}
+.amount-label{font-weight:700;font-size:0.82rem;margin:0.2rem 0 0.1rem;}
+.amount-desc{font-size:0.72rem;color:var(--text-muted);}
+.methods-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;}
+.method-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1rem;transition:all 0.2s;}
+.method-card:hover{border-color:var(--jain-blue);box-shadow:var(--shadow);}
+.method-icon{font-size:1.6rem;margin-bottom:0.45rem;}
+.method-title{font-weight:800;font-size:0.88rem;color:var(--jain-blue);margin-bottom:0.2rem;}
+.method-desc{font-size:0.76rem;color:var(--text-muted);line-height:1.5;margin-bottom:0.65rem;}
+.nonprofit-box{background:linear-gradient(135deg,rgba(13,43,110,0.05),rgba(26,122,60,0.04));border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;margin-top:1.5rem;}
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
-    <div class="page-header-inner">
-        <h1>Support Jain Education</h1>
-        <p>Your donation helps us keep Jain education free and accessible for families worldwide. Every contribution makes a difference.</p>
-    </div>
+  <div class="page-header-inner">
+    <h1>Support Jain Education</h1>
+    <p>Your donation helps keep Jain education free and accessible for families worldwide.</p>
+  </div>
 </div>
-<div class="container section" style="max-width:900px;">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-bottom:4rem;">
-        {% for amount, label, impact in [("$25", "Supporter", "Sponsors one student for a month"), ("$100", "Patron", "Supports materials for a full class"), ("$500", "Champion", "Funds a semester for an entire Pathshala")] %}
-        <div class="card" style="padding:2rem;text-align:center;border:2px solid var(--border);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--blue)';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
-            <div style="font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:700;color:var(--blue);">{{ amount }}</div>
-            <div style="font-weight:700;margin-bottom:0.5rem;">{{ label }}</div>
-            <div style="font-size:0.85rem;color:var(--text-muted);">{{ impact }}</div>
-        </div>
-        {% endfor %}
+<div class="pg">
+  <div style="margin-bottom:1.25rem;"><div class="section-label">Choose an Amount</div></div>
+  <div class="amount-grid">
+    {% for amount, label, impact in [("$25","Supporter","Sponsors one student for a month"),("$100","Patron","Supports materials for a full class"),("$500","Champion","Funds a semester for a Pathshala")] %}
+    <div class="amount-card">
+      <div class="amount-num">{{ amount }}</div>
+      <div class="amount-label">{{ label }}</div>
+      <div class="amount-desc">{{ impact }}</div>
     </div>
-
-    <h2 style="font-family:'Cormorant Garamond',serif;font-size:2rem;margin-bottom:2rem;">Ways to Donate</h2>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-        {% for method in [
-            ("💳", "Online via Zeffy", "Donate online with zero platform fees. 100% of your donation reaches GJPP.", "Donate via Zeffy"),
-            ("🏢", "Benevity / Employer Match", "Many employers match charitable donations. Check if your employer matches.", "Donate via Benevity"),
-            ("📱", "Zelle", "Send directly to: gjpp@jainpathshala.org — Fast and fee-free.", "Copy Email"),
-            ("✉️", "Check by Mail", "Make checks payable to 'Global Jain Pramanik Pathshala' and mail to our registered address.", "Contact for Address"),
-        ] %}
-        <div class="card" style="padding:1.75rem;">
-            <div style="font-size:2rem;margin-bottom:0.75rem;">{{ method[0] }}</div>
-            <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.4rem;">{{ method[1] }}</h3>
-            <p style="font-size:0.875rem;color:var(--text-muted);line-height:1.6;margin-bottom:1.25rem;">{{ method[2] }}</p>
-            <button class="btn btn-outline" style="font-size:0.82rem;padding:0.45rem 1rem;">{{ method[3] }}</button>
-        </div>
-        {% endfor %}
+    {% endfor %}
+  </div>
+  <div style="margin-bottom:1rem;"><div class="section-label">Ways to Donate</div></div>
+  <div class="methods-grid">
+    {% for icon, title, desc, btn in [("💳","Online via Zeffy","Zero platform fees — 100% reaches GJPP.","Donate via Zeffy"),("🏢","Benevity / Employer","Check if your employer matches donations.","Donate via Benevity"),("📱","Zelle","Send to: gjpp@jainpathshala.org","Copy Email"),("✉️","Check by Mail","Payable to 'Global Jain Pramanik Pathshala'.","Contact for Address")] %}
+    <div class="method-card">
+      <div class="method-icon">{{ icon }}</div>
+      <div class="method-title">{{ title }}</div>
+      <p class="method-desc">{{ desc }}</p>
+      <button class="btn btn-outline-blue btn-sm">{{ btn }}</button>
     </div>
-
-    <div style="margin-top:3rem;background:linear-gradient(135deg,rgba(232,101,26,0.07),rgba(212,160,23,0.07));border:1px solid var(--border);border-radius:16px;padding:2rem;text-align:center;">
-        <div style="font-size:2rem;margin-bottom:0.75rem;">🙏</div>
-        <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;margin-bottom:0.75rem;">GJPP is a 501(c)(3) Nonprofit</h3>
-        <p style="color:var(--text-muted);font-size:0.9rem;">All donations are tax-deductible in the United States. You will receive a receipt for tax purposes.</p>
-    </div>
+    {% endfor %}
+  </div>
+  <div class="nonprofit-box">
+    <div style="font-size:1.75rem;margin-bottom:0.4rem;">🙏</div>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.3rem;">GJPP is a 501(c)(3) Nonprofit</h3>
+    <p style="color:var(--text-muted);font-size:0.84rem;">All donations are tax-deductible. You will receive a receipt for tax purposes.</p>
+  </div>
 </div>
 {% endblock %}

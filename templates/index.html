@@ -122,7 +122,8 @@
 @media (max-width: 960px) {
     .hero-inner { grid-template-columns: 1fr; }
     .hero h1 { font-size: 2.6rem; }
-    #globe-canvas { width: 320px !important; height: 320px !important; }
+    #globe-canvas { width: 300px !important; height: 300px !important; }
+    .globe-hint { font-size:0.65rem; }
     .regions-grid { grid-template-columns: repeat(2, 1fr); }
     .events-grid  { grid-template-columns: 1fr; }
     .features-grid { grid-template-columns: 1fr 1fr; }
@@ -137,7 +138,7 @@
     <div class="hero-glow-r"></div>
     <div class="hero-glow-l"></div>
     <div class="hero-inner">
-        <div>
+        <div class="hero-content-wrap">
             <div class="hero-eyebrow">✦ Jai Jinendra — Global Jain Learning</div>
             <h1>Jain Education,<em>Everywhere on Earth</em></h1>
             <p class="hero-desc">GJPP connects Jain families across 6 continents through structured, level-based education for ages 3 to 99. Online classes, local Pathshalas, and a global community — all in one place.</p>
@@ -153,7 +154,7 @@
             </div>
         </div>
 
-        <div class="globe-wrap">
+        <div class="globe-wrap hero-globe-wrap">
             <div style="position:relative;width:520px;height:520px;">
                 <div id="globe-loading">
                     <div class="globe-spinner"></div>

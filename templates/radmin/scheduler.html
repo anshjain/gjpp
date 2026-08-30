@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Study Scheduler - {{ region.name if region }} GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+
+.hero{border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;background:linear-gradient(135deg,#5B1A8A,#3D0F6A);}
+.hero h2{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:0.3rem;}
+.hero p{color:rgba(255,255,255,0.6);font-size:0.85rem;}
+
+.start-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;text-align:center;}
+.start-card .icon{font-size:2.5rem;margin-bottom:0.75rem;}
+.start-card h3{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.4rem;}
+.start-card p{color:var(--text-muted);font-size:0.85rem;margin-bottom:1.25rem;max-width:420px;margin-left:auto;margin-right:auto;}
+.start-form{display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap;max-width:420px;margin:0 auto;}
+.start-form input{flex:1;min-width:160px;}
+
+.status-banner{border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;}
+.status-banner.active{background:var(--green-light);border:1px solid rgba(26,122,60,0.25);}
+.status-banner.paused{background:var(--yellow-light);border:1px solid rgba(245,197,24,0.35);}
+
+.today-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
+.today-head{padding:1.1rem 1.25rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));}
+.today-head .tlabel{font-size:0.66rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);margin-bottom:0.25rem;}
+.today-head h3{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:800;color:#fff;}
+.today-body{padding:1.25rem;}
+.festival-alert{background:var(--yellow-light);border:1px solid rgba(245,197,24,0.4);border-radius:10px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;}
+
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-bottom:1.5rem;}
+@media(min-width:640px){.stats-row{grid-template-columns:repeat(4,1fr);}}
+.s-box{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1rem;text-align:center;}
+.s-num{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:800;color:var(--jain-blue);}
+.s-lbl{font-size:0.66rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:0.2rem;}
+
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.25rem;}
+.sc-head{padding:0.9rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);}
+.week-row{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.1rem;border-bottom:1px solid var(--border);font-size:0.85rem;}
+.week-row:last-child{border-bottom:none;}
+.week-dot{width:26px;height:26px;border-radius:50%;background:var(--blue-light);color:var(--jain-blue);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0;}
+
+.fest-item{padding:0.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;gap:0.7rem;align-items:flex-start;}
+.fest-item:last-child{border-bottom:none;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="hero">
+    <h2>🗓️ Six-Week Study Scheduler</h2>
+    <p>{{ curriculum.name }} · {{ region.flag if region }} {{ region.name if region }} · Start the schedule at any time — festivals will automatically pause and shift it.</p>
+  </div>
+
+  <div class="pg-title">Study Scheduler</div>
+  <div class="pg-sub">Manage the six-week curriculum for your region independently of other regions.</div>
+
+  {% if sched.status == 'not_started' %}
+  <div class="start-card">
+    <div class="icon">🚀</div>
+    <h3>Start the Six-Week Schedule</h3>
+    <p>Choose a start date for {{ region.name if region }}. Students and teachers will begin seeing daily sessions from that date. Other regions are unaffected.</p>
+    <form method="POST" action="/radmin/scheduler/start" class="start-form">
+      <input type="date" name="start_date" class="form-input" required>
+      <button type="submit" class="btn btn-blue">Start Schedule →</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="status-banner active">
+    <div>
+      <strong style="color:var(--green-dark);">✅ Schedule Active</strong>
+      <div style="font-size:0.8rem;color:var(--text-mid);margin-top:0.2rem;">Started {{ sched.start_date }} · Started by admin on {{ sched.started_at }}</div>
+    </div>
+    <form method="POST" action="/radmin/scheduler/reset" onsubmit="return confirm('Reset the schedule for {{ region.name if region }}? Progress already recorded will be preserved, but the timeline will restart.')">
+      <button type="submit" class="btn btn-outline-blue btn-sm">↺ Reset Schedule</button>
+    </form>
+  </div>
+
+  <!-- Today's session -->
+  <div class="today-card">
+    <div class="today-head">
+      <div class="tlabel">Today · {{ curriculum.name }}</div>
+      {% if today_entry and today_entry.session %}
+      <h3>Week {{ today_entry.session.week_number }} · Day {{ today_entry.session.day_in_week }} — {{ today_entry.session.title }}</h3>
+      {% elif today_entry and today_entry.festival %}
+      <h3>🪔 {{ today_entry.festival.name }} — Schedule Paused</h3>
+      {% else %}
+      <h3>Schedule not active today</h3>
+      {% endif %}
+    </div>
+    <div class="today-body">
+      {% if today_entry and today_entry.session %}
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;">{{ today_entry.session.content }}</p>
+      {% elif today_entry and today_entry.festival %}
+      <div class="festival-alert">
+        <span style="font-size:1.5rem;">🪔</span>
+        <div>
+          <strong style="color:var(--yellow-dark);">{{ today_entry.festival.name }}</strong>
+          <p style="font-size:0.82rem;color:var(--yellow-dark);opacity:0.85;margin-top:0.25rem;">
+            {{ today_entry.festival.start_date }} → {{ today_entry.festival.end_date }}. The schedule is paused and will automatically resume with the next study session after this period ends — no content is lost.
+          </p>
+        </div>
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted);font-size:0.875rem;">Either the schedule hasn't reached today yet, or all {{ total_sessions }} sessions have been completed.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="s-box"><div class="s-num">{{ total_sessions }}</div><div class="s-lbl">Total Sessions</div></div>
+    <div class="s-box"><div class="s-num">{{ weeks_summary|length }}</div><div class="s-lbl">Weeks Mapped</div></div>
+    <div class="s-box"><div class="s-num">{{ festivals|length }}</div><div class="s-lbl">Festival Breaks</div></div>
+    <div class="s-box"><div class="s-num">{{ sched.start_date }}</div><div class="s-lbl" style="font-size:0.6rem;">Start Date</div></div>
+  </div>
+
+  <div class="sc">
+    <div class="sc-head"><h3>Week-by-Week Calendar (resolved for {{ region.name if region }})</h3></div>
+    {% for w in weeks_summary %}
+    <div class="week-row">
+      <div style="display:flex;align-items:center;gap:0.7rem;">
+        <div class="week-dot">W{{ w.week_number }}</div>
+        <div>
+          <strong>Week {{ w.week_number }}</strong>
+          <div style="font-size:0.76rem;color:var(--text-muted);">{{ w.start_date }} → {{ w.end_date }}</div>
+        </div>
+      </div>
+      <span class="tag tag-blue">{{ w.session_count }} sessions</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="sc">
+    <div class="sc-head"><h3>🪔 Festivals Affecting {{ region.name if region }}</h3></div>
+    {% if festivals %}
+      {% for f in festivals %}
+      <div class="fest-item">
+        <span style="font-size:1.3rem;">🪔</span>
+        <div>
+          <strong style="color:var(--jain-blue);font-size:0.88rem;">{{ f.name }}</strong>
+          <div style="font-size:0.78rem;color:var(--text-muted);">{{ f.start_date }} → {{ f.end_date }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.85rem;">No festivals currently configured for your region.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -58,6 +58,14 @@
   <div class="info-banner yellow">⏳ <strong>Location update pending:</strong> Request to move to {{ pending_req.new_city }}, {{ pending_req.new_country }} is awaiting admin approval.</div>
   {% endif %}
 
+  {% if not user.email_verified or not user.phone_verified %}
+  <div class="info-banner yellow">⚠️ <strong>Please verify your account:</strong>
+    {% if not user.email_verified %}<a href="/verify/email" style="color:var(--yellow-dark);text-decoration:underline;font-weight:800;">Verify email</a>{% endif %}
+    {% if not user.email_verified and not user.phone_verified %} &nbsp;·&nbsp; {% endif %}
+    {% if not user.phone_verified %}<a href="/verify/phone" style="color:var(--yellow-dark);text-decoration:underline;font-weight:800;">Verify phone</a>{% endif %}
+  </div>
+  {% endif %}
+
   <div class="pg-title">My Teaching Dashboard</div>
   <div class="pg-sub">Showing classes and events for {{ region.name if region }} · {{ user.city }}, {{ user.country }}</div>
 
@@ -92,6 +100,36 @@
     </div>
     {% else %}
     <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.875rem;">No students in your class yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Upcoming Birthdays -->
+  <div class="sc">
+    <div class="sc-head">
+      <h3>🎂 Upcoming Birthdays</h3>
+      <span style="font-size:0.75rem;color:var(--text-muted);">next 30 days</span>
+    </div>
+    {% if upcoming_birthdays %}
+    <div style="padding:0.5rem 1.1rem;">
+      {% for s in upcoming_birthdays %}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.75rem 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span style="font-size:1.3rem;">🎂</span>
+          <div>
+            <strong style="font-size:0.86rem;color:var(--jain-blue);">{{ s.name }}</strong>
+            <div style="font-size:0.74rem;color:var(--text-muted);">
+              {% if s.days_until == 0 %}🎉 Birthday is today!{% else %}in {{ s.days_until }} day{{ 's' if s.days_until != 1 }}{% endif %}
+            </div>
+          </div>
+        </div>
+        <form method="POST" action="/teacher/send-birthday-message/{{ s.id }}">
+          <button type="submit" class="btn btn-yellow btn-sm">🎁 Send Message</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.85rem;">No birthdays in your class in the next 30 days.</div>
     {% endif %}
   </div>
 

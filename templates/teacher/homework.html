@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Homework - Teacher GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.sc-head{padding:0.9rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);}
+.hw-item{padding:1rem 1.1rem;border-bottom:1px solid var(--border);}
+.hw-item:last-child{border-bottom:none;}
+.hw-session{font-size:0.7rem;font-weight:800;color:var(--jain-green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;}
+.hw-title{font-weight:800;color:var(--jain-blue);font-size:0.94rem;margin-bottom:0.25rem;}
+.hw-desc{font-size:0.82rem;color:var(--text-muted);line-height:1.5;margin-bottom:0.4rem;}
+.hw-meta{font-size:0.74rem;color:var(--text-muted);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.75rem;">
+    <div>
+      <div class="pg-title">Assigned Homework</div>
+      <div class="pg-sub">{{ homework|length }} homework item{{ 's' if homework|length != 1 }} for your class</div>
+    </div>
+    <a href="/teacher/scheduler" class="btn btn-green btn-sm">← Today's Session</a>
+  </div>
+
+  <div class="sc">
+    <div class="sc-head"><h3>All Homework</h3></div>
+    {% if homework %}
+      {% for h in homework %}
+      <div class="hw-item">
+        {% if h.session %}
+        <div class="hw-session">Week {{ h.session.week_number }} · Day {{ h.session.day_in_week }} — {{ h.session.title }}</div>
+        {% endif %}
+        <div class="hw-title">{{ h.title }}</div>
+        {% if h.description %}<p class="hw-desc">{{ h.description }}</p>{% endif %}
+        <div class="hw-meta">Assigned {{ h.created_at }}{% if h.due_date %} · Due {{ h.due_date }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div style="text-align:center;padding:3rem 1.5rem;color:var(--text-muted);">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">📝</div>
+      <div style="font-weight:700;color:var(--jain-blue);margin-bottom:0.4rem;">No homework assigned yet</div>
+      <p style="font-size:0.85rem;margin-bottom:1.25rem;">Assign homework from today's active study session.</p>
+      <a href="/teacher/scheduler" class="btn btn-green">Go to Today's Session →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

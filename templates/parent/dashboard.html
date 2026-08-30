@@ -56,6 +56,14 @@
     </div>
   </div>
 
+  {% if not user.email_verified or not user.phone_verified %}
+  <div class="info-banner yellow">⚠️ <strong>Please verify your account:</strong>
+    {% if not user.email_verified %}<a href="/verify/email" style="color:var(--yellow-dark);text-decoration:underline;font-weight:800;">Verify email</a>{% endif %}
+    {% if not user.email_verified and not user.phone_verified %} &nbsp;·&nbsp; {% endif %}
+    {% if not user.phone_verified %}<a href="/verify/phone" style="color:var(--yellow-dark);text-decoration:underline;font-weight:800;">Verify phone</a>{% endif %}
+  </div>
+  {% endif %}
+
   {% if pending_req %}
   <div class="info-banner yellow">⏳ <strong>Location update pending:</strong> Request to move to {{ pending_req.new_city }}, {{ pending_req.new_country }} is awaiting admin approval.</div>
   {% endif %}

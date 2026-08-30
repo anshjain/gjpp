@@ -56,7 +56,7 @@
     </div>
     {% if students %}
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Student</th><th>Age</th><th>Gender</th><th>City</th><th>Parent</th><th>WhatsApp</th><th>Enrolled</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Student</th><th>Age</th><th>DOB</th><th>Gender</th><th>City</th><th>Parent</th><th>WhatsApp</th><th>Enrolled</th><th>Actions</th></tr></thead>
       <tbody>
         {% for s in students %}
         <tr>
@@ -64,9 +64,12 @@
             <div style="display:flex;align-items:center;">
               <div class="avatar">{{ s.name[0] }}</div>
               <strong>{{ s.name }}</strong>
+              {% set d = days_to_next_birthday(s.dob) %}
+              {% if d is not none and d <= 30 %}<span class="tag tag-yellow" style="margin-left:0.4rem;">🎂 {{ 'today!' if d==0 else d ~ 'd' }}</span>{% endif %}
             </div>
           </td>
           <td>{{ s.age }}</td>
+          <td style="font-size:0.78rem;color:var(--text-muted);">{{ s.dob or '—' }}</td>
           <td><span class="tag {{ 'tag-blue' if s.gender=='Male' else 'tag-red' }}">{{ s.gender }}</span></td>
           <td>{{ s.city }}</td>
           <td>
@@ -75,6 +78,9 @@
           </td>
           <td style="font-size:0.8rem;color:var(--text-muted);">{{ s.parent1_whatsapp }}</td>
           <td style="font-size:0.78rem;color:var(--text-muted);">{{ s.registered_at }}</td>
+          <td>
+            <a href="/teacher/promote/{{ s.id }}" class="btn btn-green" style="font-size:0.75rem;padding:0.3rem 0.7rem;">⬆️ Promote</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

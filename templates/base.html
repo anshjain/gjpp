@@ -564,6 +564,7 @@
         <a href="/materials"        class="sb-link {{ 'active' if request.path=='/materials' }}"><span class="si">📂</span> Study Materials</a>
         <a href="/materials/upload" class="sb-link {{ 'active' if '/materials/upload' in request.path }}"><span class="si">⬆️</span> Upload Material</a>
         <a href="/classes"          class="sb-link"><span class="si">📚</span> Curriculum</a>
+        <a href="/admin/festivals"  class="sb-link {{ 'active' if request.path=='/admin/festivals' }}"><span class="si">🪔</span> Festival Config</a>
         <div class="sb-section">Admin</div>
         <a href="/admin/location-requests" class="sb-link {{ 'active' if '/admin/location-requests' in request.path }}">
           <span class="si">📍</span> Location Requests
@@ -571,6 +572,8 @@
         </a>
         <a href="/enquiry" class="sb-link"><span class="si">✉️</span> Enquiries</a>
         <a href="/donate"  class="sb-link"><span class="si">💛</span> Donate</a>
+        <div class="sb-section">Account</div>
+        <a href="/profile" class="sb-link {{ 'active' if request.path=='/profile' }}"><span class="si">👤</span> My Profile</a>
 
       {% elif u.role == 'regional_admin' %}
         <div class="sb-section">{{ region_label(u.region) }} Admin</div>
@@ -578,10 +581,13 @@
         <a href="/radmin/students"  class="sb-link {{ 'active' if '/radmin/students' in request.path }}"><span class="si">🎓</span> My Students</a>
         <a href="/radmin/teachers"  class="sb-link {{ 'active' if '/radmin/teachers' in request.path }}"><span class="si">📖</span> My Teachers</a>
         <a href="/radmin/events"    class="sb-link {{ 'active' if '/radmin/events' in request.path }}"><span class="si">📅</span> Events</a>
+        <div class="sb-section">Study Scheduler</div>
+        <a href="/radmin/scheduler" class="sb-link {{ 'active' if '/radmin/scheduler' in request.path }}"><span class="si">🗓️</span> Six-Week Schedule</a>
         <div class="sb-section">Content</div>
         <a href="/materials"        class="sb-link {{ 'active' if request.path=='/materials' }}"><span class="si">📂</span> Study Materials</a>
         <a href="/materials/upload" class="sb-link {{ 'active' if '/materials/upload' in request.path }}"><span class="si">⬆️</span> Upload Material</a>
         <div class="sb-section">Account</div>
+        <a href="/profile" class="sb-link {{ 'active' if request.path=='/profile' }}"><span class="si">👤</span> My Profile</a>
         <a href="/enquiry" class="sb-link"><span class="si">✉️</span> Contact Super Admin</a>
 
       {% elif u.role == 'teacher' %}
@@ -590,6 +596,9 @@
         <a href="/teacher/students"     class="sb-link {{ 'active' if '/teacher/students' in request.path }}"><span class="si">🎓</span> My Students</a>
         <a href="/teacher/classes"      class="sb-link {{ 'active' if '/teacher/classes' in request.path }}"><span class="si">📋</span> Class Roster</a>
         <a href="/teacher/promotions"   class="sb-link {{ 'active' if '/teacher/promotions' in request.path }}"><span class="si">⬆️</span> Promotions</a>
+        <div class="sb-section">Study Scheduler</div>
+        <a href="/teacher/scheduler"          class="sb-link {{ 'active' if request.path=='/teacher/scheduler' }}"><span class="si">🗓️</span> Today's Session</a>
+        <a href="/teacher/scheduler/homework" class="sb-link {{ 'active' if '/teacher/scheduler/homework' in request.path }}"><span class="si">📝</span> Homework</a>
         <div class="sb-section">Videos</div>
         <a href="/teacher/video-requests" class="sb-link {{ 'active' if '/teacher/video-requests' in request.path }}"><span class="si">🎬</span> Video Requests</a>
         <a href="/teacher/videos"         class="sb-link {{ 'active' if '/teacher/videos' in request.path }}"><span class="si">📹</span> Student Videos</a>
@@ -599,6 +608,7 @@
         <a href="/events"  class="sb-link {{ 'active' if request.path=='/events' }}"><span class="si">📅</span> Events</a>
         <a href="/classes" class="sb-link {{ 'active' if request.path=='/classes' }}"><span class="si">📚</span> Curriculum</a>
         <div class="sb-section">Account</div>
+        <a href="/profile" class="sb-link {{ 'active' if request.path=='/profile' }}"><span class="si">👤</span> My Profile</a>
         <a href="/request-location-update" class="sb-link {{ 'active' if '/request-location' in request.path }}"><span class="si">📍</span> Update Location</a>
         <a href="/enquiry" class="sb-link"><span class="si">✉️</span> Contact Admin</a>
 
@@ -607,6 +617,8 @@
         <a href="/parent"          class="sb-link {{ 'active' if request.path=='/parent' }}"><span class="si">📊</span> Dashboard</a>
         <a href="/parent/children" class="sb-link {{ 'active' if '/parent/children' in request.path }}"><span class="si">👨‍👩‍👦</span> My Children</a>
         <a href="/parent/teachers" class="sb-link {{ 'active' if '/parent/teachers' in request.path }}"><span class="si">📖</span> Our Teachers</a>
+        <div class="sb-section">Study Scheduler</div>
+        <a href="/parent/scheduler" class="sb-link {{ 'active' if request.path=='/parent/scheduler' }}"><span class="si">🗓️</span> Today's Session</a>
         <div class="sb-section">Region</div>
         <a href="/events"  class="sb-link {{ 'active' if request.path=='/events' }}"><span class="si">📅</span> Events</a>
         <a href="/classes" class="sb-link {{ 'active' if request.path=='/classes' }}"><span class="si">📚</span> Curriculum</a>
@@ -616,6 +628,7 @@
         <div class="sb-section">Enroll</div>
         <a href="/register/student" class="sb-link"><span class="si">➕</span> Enroll a Child</a>
         <div class="sb-section">Account</div>
+        <a href="/profile" class="sb-link {{ 'active' if request.path=='/profile' }}"><span class="si">👤</span> My Profile</a>
         <a href="/request-location-update" class="sb-link {{ 'active' if '/request-location' in request.path }}"><span class="si">📍</span> Update Location</a>
         <a href="/enquiry" class="sb-link"><span class="si">✉️</span> Contact Us</a>
       {% endif %}

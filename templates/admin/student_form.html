@@ -43,6 +43,7 @@
           <div class="form-group"><label class="form-label">Full Name <span>*</span></label><input type="text" name="name" class="form-input" required placeholder="Student's full name" value="{{ student.name if student else '' }}"></div>
           <div class="form-group"><label class="form-label">Age <span>*</span></label><input type="number" name="age" class="form-input" required min="3" max="99" placeholder="Age" value="{{ student.age if student else '' }}"></div>
         </div>
+        <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dob" class="form-input" value="{{ student.dob if student else '' }}"></div>
         <div class="form-group">
           <label class="form-label">Gender</label>
           <div class="gender-row">
@@ -72,7 +73,12 @@
           </select>
         </div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Country <span>*</span></label><input type="text" name="country" class="form-input" required placeholder="e.g. United States" value="{{ student.country if student else '' }}"></div>
+          <div class="form-group"><label class="form-label">Country <span>*</span></label>
+            <select name="country" class="form-select" required>
+              <option value="">Select country…</option>
+              {% for c in countries %}<option value="{{ c }}" {% if student and student.country==c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select>
+          </div>
           <div class="form-group"><label class="form-label">City</label><input type="text" name="city" class="form-input" placeholder="e.g. New York" value="{{ student.city if student else '' }}"></div>
         </div>
 

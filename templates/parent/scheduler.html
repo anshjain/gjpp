@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Today's Session - Parent GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+
+.today-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
+.today-head{padding:1.1rem 1.25rem;background:linear-gradient(135deg,var(--jain-red),var(--red-dark));}
+.today-head .tlabel{font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);margin-bottom:0.2rem;}
+.today-head h3{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:800;color:#fff;}
+.today-body{padding:1.25rem;}
+
+.festival-alert{background:var(--yellow-light);border:1px solid rgba(245,197,24,0.4);border-radius:10px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;}
+.not-started{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:2.5rem 1.5rem;text-align:center;}
+
+.children-grid{display:grid;grid-template-columns:1fr;gap:1rem;}
+@media(min-width:600px){.children-grid{grid-template-columns:repeat(2,1fr);}}
+.child-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.child-top{padding:1.1rem;border-top:4px solid var(--jain-red);}
+.child-av{width:38px;height:38px;border-radius:50%;background:var(--jain-red);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1rem;font-weight:800;flex-shrink:0;}
+.progress-bar-track{background:var(--bg);border-radius:100px;height:8px;overflow:hidden;margin-top:0.5rem;}
+.progress-bar-fill{background:var(--jain-green);height:100%;border-radius:100px;transition:width 0.3s;}
+.hw-box{background:var(--red-light);border-radius:9px;padding:0.75rem 0.9rem;margin-top:0.75rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-title">Today's Study Session</div>
+  <div class="pg-sub">{{ curriculum.name }} · {{ region_label(user.region) }}</div>
+
+  {% if not sched.start_date %}
+  <div class="not-started">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">🗓️</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.4rem;">Schedule Not Started Yet</div>
+    <p style="color:var(--text-muted);font-size:0.875rem;">Your region's coordinator hasn't started the six-week schedule yet. Check back once it begins.</p>
+  </div>
+  {% else %}
+
+  <div class="today-card">
+    <div class="today-head">
+      <div class="tlabel">Today</div>
+      {% if today_entry and today_entry.session %}
+      <h3>Week {{ today_entry.session.week_number }} · Day {{ today_entry.session.day_in_week }} — {{ today_entry.session.title }}</h3>
+      {% elif today_entry and today_entry.festival %}
+      <h3>🪔 {{ today_entry.festival.name }} — Schedule Paused</h3>
+      {% else %}
+      <h3>No active session today</h3>
+      {% endif %}
+    </div>
+    <div class="today-body">
+      {% if today_entry and today_entry.session %}
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;">{{ today_entry.session.content }}</p>
+      {% elif today_entry and today_entry.festival %}
+      <div class="festival-alert">
+        <span style="font-size:1.5rem;">🪔</span>
+        <div>
+          <strong style="color:var(--yellow-dark);">{{ today_entry.festival.name }}</strong>
+          <p style="font-size:0.82rem;color:var(--yellow-dark);opacity:0.85;margin-top:0.25rem;">
+            {{ today_entry.festival.start_date }} → {{ today_entry.festival.end_date }}. Sessions will resume automatically after this period — no content is lost.
+          </p>
+        </div>
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted);font-size:0.875rem;">No session scheduled for today — the program may not have reached your region yet, or it has completed.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.85rem;">My Children</div>
+  <div class="children-grid">
+    {% for cd in children_data %}
+    <div class="child-card">
+      <div class="child-top">
+        <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.75rem;">
+          <div class="child-av">{{ cd.child.name[0] }}</div>
+          <div>
+            <div style="font-weight:700;color:var(--jain-blue);font-size:0.94rem;">{{ cd.child.name }}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">{{ cd.child.class_id or '—' }}</div>
+          </div>
+        </div>
+
+        {% if cd.progress %}
+        <div style="font-size:0.76rem;color:var(--text-muted);display:flex;justify-content:space-between;">
+          <span>Progress</span>
+          <span><strong style="color:var(--jain-blue);">{{ cd.progress.completed_count }}</strong> / {{ cd.progress.released_count }} sessions</span>
+        </div>
+        <div class="progress-bar-track">
+          {% set pct = (cd.progress.completed_count / cd.progress.released_count * 100) if cd.progress.released_count > 0 else 0 %}
+          <div class="progress-bar-fill" style="width:{{ pct }}%;"></div>
+        </div>
+        {% endif %}
+
+        {% if today_entry and today_entry.session %}
+          {% if cd.completed_today %}
+          <div style="margin-top:0.75rem;"><span class="tag tag-green">✅ Today's session completed</span></div>
+          {% else %}
+          <form method="POST" action="/parent/scheduler/mark-complete" style="margin-top:0.75rem;">
+            <input type="hidden" name="student_id" value="{{ cd.child.id }}">
+            <input type="hidden" name="session_id" value="{{ today_entry.session.id }}">
+            <button type="submit" class="btn btn-red btn-sm btn-block">Mark Today's Session Complete</button>
+          </form>
+          {% endif %}
+        {% endif %}
+
+        {% if cd.homework_today %}
+        <div class="hw-box">
+          <div style="font-size:0.7rem;font-weight:800;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem;">📝 Homework Today</div>
+          <div style="font-weight:700;font-size:0.84rem;color:var(--jain-blue);">{{ cd.homework_today.title }}</div>
+          {% if cd.homework_today.due_date %}<div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem;">Due {{ cd.homework_today.due_date }}</div>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div style="grid-column:1/-1;text-align:center;padding:2.5rem;background:#fff;border:1.5px solid var(--border);border-radius:14px;color:var(--text-muted);">
+      No children enrolled yet. <a href="/register/student" style="color:var(--jain-blue);font-weight:700;">Enroll a child →</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

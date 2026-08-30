@@ -18,8 +18,16 @@
     <h1 class="success-title">{{ title }}</h1>
     <p class="success-msg">{{ message }}</p>
     <div class="success-btns">
+      {% if show_verify_cta %}
+      <a href="/verify/email" class="btn btn-blue">Verify My Email →</a>
+      <a href="/parent" class="btn btn-outline-blue">Go to Dashboard</a>
+      {% elif show_dashboard_cta %}
+      <a href="/parent" class="btn btn-blue">Go to My Dashboard →</a>
+      <a href="/events" class="btn btn-outline-blue">View Events</a>
+      {% else %}
       <a href="/" class="btn btn-blue">Go to Homepage</a>
       <a href="/events" class="btn btn-outline-blue">View Events</a>
+      {% endif %}
     </div>
     <p style="margin-top:1.4rem;font-size:0.8rem;color:var(--text-muted);">
       Questions? <a href="/enquiry" style="color:var(--jain-blue);font-weight:700;">Contact us</a>

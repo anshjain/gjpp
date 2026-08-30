@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Festival Configuration - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+.layout{display:grid;grid-template-columns:1fr;gap:1.25rem;}
+@media(min-width:900px){.layout{grid-template-columns:1fr 340px;}}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.1rem;}
+.sc-head{padding:0.9rem 1.1rem;border-bottom:1px solid var(--border);}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);}
+.fest-item{padding:0.95rem 1.1rem;border-bottom:1px solid var(--border);display:flex;gap:0.85rem;align-items:flex-start;}
+.fest-item:last-child{border-bottom:none;}
+.fest-icon{width:38px;height:38px;border-radius:10px;background:var(--yellow-light);color:var(--yellow-dark);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;}
+.fest-name{font-weight:800;color:var(--jain-blue);font-size:0.92rem;}
+.fest-dates{font-size:0.78rem;color:var(--text-muted);margin-top:0.1rem;}
+.fest-regions{margin-top:0.4rem;display:flex;gap:0.3rem;flex-wrap:wrap;}
+.region-chip{font-size:0.66rem;font-weight:800;padding:0.14rem 0.5rem;border-radius:100px;background:var(--blue-light);color:var(--jain-blue);}
+.fest-notes{font-size:0.78rem;color:var(--text-muted);margin-top:0.4rem;line-height:1.5;}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.25rem;}
+.form-card h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.25rem;}
+.form-card .sub{font-size:0.78rem;color:var(--text-muted);margin-bottom:1.1rem;}
+.region-checks{display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;}
+.region-check{display:flex;align-items:center;gap:0.4rem;padding:0.4rem 0.55rem;border:1.5px solid var(--border);border-radius:7px;font-size:0.78rem;font-weight:600;background:var(--bg);cursor:pointer;}
+.region-check input{accent-color:var(--jain-blue);width:14px;height:14px;}
+.region-check:has(input:checked){border-color:var(--jain-blue);background:var(--blue-light);}
+.info-box{background:var(--blue-light);border-radius:9px;padding:0.85rem 1rem;font-size:0.8rem;color:var(--text-mid);line-height:1.55;margin-bottom:1.25rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-title">Festival Configuration</div>
+  <div class="pg-sub">Jain festival periods pause the six-week study schedule for affected regions — the schedule resumes and shifts forward automatically after the break.</div>
+
+  <div class="info-box">
+    🪔 <strong>How this works:</strong> When a region's active six-week schedule overlaps with a configured festival, that period becomes a break. No sessions are skipped — they simply resume after the festival ends, and everything after shifts forward by the same number of days.
+  </div>
+
+  <div class="layout">
+    <div class="sc">
+      <div class="sc-head"><h3>Configured Festivals ({{ festivals|length }})</h3></div>
+      {% if festivals %}
+        {% for f in festivals %}
+        <div class="fest-item">
+          <div class="fest-icon">🪔</div>
+          <div style="flex:1;">
+            <div class="fest-name">{{ f.name }}</div>
+            <div class="fest-dates">📅 {{ f.start_date }} → {{ f.end_date }} · {{ ((f.end_date|string)[:10] != (f.start_date|string)[:10]) and 'multi-day' or '1 day' }}</div>
+            <div class="fest-regions">
+              {% for rid in f.regions %}
+              <span class="region-chip">{{ '🌍 Global' if rid=='global' else region_label(rid) }}</span>
+              {% endfor %}
+              {% if not f.pauses_schedule %}<span class="region-chip" style="background:var(--red-light);color:var(--red-dark);">Pause disabled</span>{% endif %}
+            </div>
+            {% if f.notes %}<div class="fest-notes">{{ f.notes }}</div>{% endif %}
+          </div>
+          <form method="POST" action="/admin/festivals/{{ f.id }}/delete" onsubmit="return confirm('Remove {{ f.name }}? Active schedules will recalculate.')">
+            <button type="submit" class="btn btn-red btn-sm">🗑</button>
+          </form>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div style="padding:2.5rem;text-align:center;color:var(--text-muted);">No festivals configured yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="form-card">
+      <h3>➕ Add Festival Period</h3>
+      <div class="sub">Configure a new break period. Dates can be updated each year.</div>
+      <form method="POST" action="/admin/festivals/new">
+        <div class="form-group">
+          <label class="form-label">Festival Name <span>*</span></label>
+          <input type="text" name="name" class="form-input" required placeholder="e.g. Paryushan Parva">
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Start Date <span>*</span></label><input type="date" name="start_date" class="form-input" required></div>
+          <div class="form-group"><label class="form-label">End Date <span>*</span></label><input type="date" name="end_date" class="form-input" required></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Applicable Regions</label>
+          <div class="region-checks">
+            <label class="region-check"><input type="checkbox" name="regions" value="global" checked>🌍 Global</label>
+            {% for r in regions %}
+            <label class="region-check"><input type="checkbox" name="regions" value="{{ r.id }}">{{ r.flag }} {{ r.name.split()[0] }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="notes" class="form-textarea" style="min-height:65px;" placeholder="Brief description…"></textarea>
+        </div>
+        <div class="form-check" style="margin-bottom:1rem;">
+          <input type="checkbox" id="pauses" name="pauses_schedule" value="yes" checked>
+          <label for="pauses">Pause the six-week schedule during this period (recommended)</label>
+        </div>
+        <button type="submit" class="btn btn-blue btn-block">Add Festival</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

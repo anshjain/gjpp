@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}My Profile - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;display:flex;justify-content:center;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.profile-wrap{width:100%;max-width:560px;}
+.hero{border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));display:flex;align-items:center;gap:1rem;}
+.hero-av{width:56px;height:56px;border-radius:50%;background:var(--jain-yellow);color:var(--jain-blue);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:800;flex-shrink:0;}
+.hero h2{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:800;color:#fff;}
+.hero p{color:rgba(255,255,255,0.6);font-size:0.8rem;margin-top:0.15rem;}
+
+.verify-row{display:flex;align-items:center;justify-content:space-between;gap:0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:0.75rem 0.9rem;margin-bottom:1.25rem;}
+.verify-row:last-of-type{margin-bottom:1.5rem;}
+.verify-status{display:flex;align-items:center;gap:0.5rem;font-size:0.84rem;font-weight:700;}
+.badge-verified{color:var(--green-dark);}
+.badge-unverified{color:var(--red-dark);}
+
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.5rem;box-shadow:var(--shadow);}
+.form-card h3{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.3rem;}
+.form-card .sub{font-size:0.8rem;color:var(--text-muted);margin-bottom:1.25rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="profile-wrap">
+    <div class="hero">
+      <div class="hero-av">{{ user.name[0].upper() }}</div>
+      <div>
+        <h2>{{ user.name }}</h2>
+        <p>{{ user.role|replace('_',' ')|title }} · {{ region_label(user.region) }}</p>
+      </div>
+    </div>
+
+    <div class="verify-row">
+      <div class="verify-status {{ 'badge-verified' if user.email_verified else 'badge-unverified' }}">
+        {{ '✅' if user.email_verified else '⚠️' }} Email {{ 'verified' if user.email_verified else 'not verified' }}
+      </div>
+      {% if not user.email_verified %}
+      <a href="/verify/email" class="btn btn-red btn-sm">Verify Now</a>
+      {% endif %}
+    </div>
+    <div class="verify-row">
+      <div class="verify-status {{ 'badge-verified' if user.phone_verified else 'badge-unverified' }}">
+        {{ '✅' if user.phone_verified else '⚠️' }} Phone {{ 'verified' if user.phone_verified else 'not verified' }}
+      </div>
+      {% if not user.phone_verified %}
+      <a href="/verify/phone" class="btn btn-red btn-sm">Verify Now</a>
+      {% endif %}
+    </div>
+
+    <div class="form-card">
+      <h3>✏️ Edit Profile</h3>
+      <div class="sub">Update your contact details. Changing your email or phone will require re-verification.</div>
+      <form method="POST" action="/profile">
+        <div class="form-group">
+          <label class="form-label">Full Name <span>*</span></label>
+          <input type="text" name="name" class="form-input" required value="{{ user.name }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address <span>*</span></label>
+          <input type="email" name="email" class="form-input" required value="{{ user.email }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone / WhatsApp Number</label>
+          <input type="tel" name="phone" class="form-input" placeholder="+1 555 000 0000" value="{{ user.phone or '' }}">
+        </div>
+        <button type="submit" class="btn btn-blue btn-lg btn-block">Save Changes</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Class Meeting Times - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+.info-box{background:var(--blue-light);border-radius:9px;padding:0.85rem 1rem;font-size:0.8rem;color:var(--text-mid);line-height:1.55;margin-bottom:1.5rem;}
+.level-grid{display:grid;grid-template-columns:1fr;gap:1rem;}
+@media(min-width:768px){.level-grid{grid-template-columns:repeat(2,1fr);}}
+.level-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.level-top{padding:1.1rem 1.25rem;border-top:4px solid var(--jain-blue);display:flex;align-items:center;justify-content:space-between;gap:0.6rem;flex-wrap:wrap;}
+.level-top h3{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);}
+.level-top .age{font-size:0.76rem;color:var(--text-muted);}
+.reg-toggle-form{display:inline;}
+.reg-badge{font-size:0.68rem;font-weight:800;padding:0.18rem 0.6rem;border-radius:100px;border:none;cursor:pointer;}
+.reg-open{background:var(--green-light);color:var(--green-dark);}
+.reg-closed{background:var(--red-light);color:var(--red-dark);}
+.slot-list{padding:0.5rem 1.1rem;}
+.slot-row{display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0;border-bottom:1px solid var(--border);}
+.slot-row:last-child{border-bottom:none;}
+.slot-day{font-weight:800;color:var(--jain-blue);font-size:0.86rem;min-width:80px;}
+.slot-time{font-size:0.84rem;color:var(--text-mid);font-weight:700;}
+.slot-label{font-size:0.72rem;color:var(--text-muted);background:var(--bg);padding:0.12rem 0.5rem;border-radius:100px;margin-left:0.3rem;}
+.add-slot-form{display:flex;gap:0.4rem;padding:0.9rem 1.1rem;background:var(--bg);flex-wrap:wrap;}
+.add-slot-form select, .add-slot-form input{flex:1;min-width:90px;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-title">Class Meeting Times</div>
+  <div class="pg-sub">Set the default day/time each level meets — Regional Admins can override this for their own region.</div>
+
+  <div class="info-box">
+    🗓️ <strong>How this works:</strong> These are the actual live-class meeting slots shown to parents during enrollment — separate from the weekly study curriculum schedule. Add multiple slots per level if a class meets more than once, or offers different named sessions (e.g. Bhaktamar Ji vs. Chahdhala for Level 3).
+  </div>
+
+  <div class="level-grid">
+    {% for ld in levels_data %}
+    <div class="level-card">
+      <div class="level-top">
+        <div>
+          <h3>{{ ld.level.name }}</h3>
+          <div class="age">{{ ld.level.age }}</div>
+        </div>
+        <form method="POST" action="/admin/class-times/{{ ld.level.id }}/toggle-registration" class="reg-toggle-form">
+          <button type="submit" class="reg-badge {{ 'reg-open' if ld.registration_open else 'reg-closed' }}">
+            {{ '✅ Registration Open' if ld.registration_open else '⛔ Registration Closed' }}
+          </button>
+        </form>
+      </div>
+      <div class="slot-list">
+        {% for s in ld.slots %}
+        <div class="slot-row">
+          <span class="slot-day">{{ s.day }}</span>
+          <span class="slot-time">{{ s.time }}</span>
+          {% if s.label %}<span class="slot-label">{{ s.label }}</span>{% endif %}
+          <form method="POST" action="/admin/class-times/{{ ld.level.id }}/remove" style="margin-left:auto;">
+            <input type="hidden" name="index" value="{{ loop.index0 }}">
+            <button type="submit" class="btn btn-red btn-sm">✕</button>
+          </form>
+        </div>
+        {% else %}
+        <div style="padding:1rem 0;color:var(--text-muted);font-size:0.84rem;">No slots configured yet.</div>
+        {% endfor %}
+      </div>
+      <form method="POST" action="/admin/class-times/{{ ld.level.id }}/add" class="add-slot-form">
+        <select name="day" required>
+          <option value="">Day…</option>
+          {% for d in ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+          <option value="{{ d }}">{{ d }}</option>
+          {% endfor %}
+        </select>
+        <input type="text" name="time" placeholder="e.g. 7:00 PM" required>
+        <input type="text" name="label" placeholder="Label (optional)">
+        <button type="submit" class="btn btn-blue btn-sm">+ Add</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

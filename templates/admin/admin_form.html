@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if action=='edit' else 'Add' }} Super Admin - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;display:flex;justify-content:center;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;overflow:hidden;width:100%;max-width:600px;box-shadow:var(--shadow-lg);}
+.form-head{padding:1.5rem 1.75rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));position:relative;overflow:hidden;}
+.form-head::before{content:'👑';position:absolute;right:1.5rem;top:50%;transform:translateY(-50%);font-size:4rem;opacity:0.12;}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:800;color:#fff;}
+.form-head p{color:rgba(255,255,255,0.6);font-size:0.82rem;margin-top:0.25rem;}
+.form-body{padding:1.5rem 1.75rem;}
+.fsect{font-family:'Playfair Display',serif;font-size:0.9rem;font-weight:700;color:var(--jain-blue);margin:1rem 0 0.7rem;padding-bottom:0.35rem;border-bottom:2px solid var(--jain-blue);}
+.fsect:first-child{margin-top:0;}
+.warn-box{background:var(--yellow-light);border-radius:9px;padding:0.75rem 0.9rem;font-size:0.8rem;color:var(--yellow-dark);margin-bottom:1.25rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>{{ '✏️ Edit Super Admin' if action=='edit' else '➕ Add Super Admin' }}</h2>
+      <p>{{ 'Update this Super Admin\'s details.' if action=='edit' else 'Grant full, unrestricted platform access across every region.' }}</p>
+    </div>
+    <div class="form-body">
+      {% if action=='new' %}
+      <div class="warn-box">⚠️ This account will have full access to every region, student, teacher, and setting on GJPP.</div>
+      {% endif %}
+      <form method="POST">
+        <div class="fsect">Account Details</div>
+        <div class="form-group"><label class="form-label">Full Name <span>*</span></label><input type="text" name="name" class="form-input" required value="{{ admin_acct.name if admin_acct else '' }}"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Email <span>*</span></label><input type="email" name="email" class="form-input" required value="{{ admin_acct.email if admin_acct else '' }}"></div>
+          <div class="form-group"><label class="form-label">Phone / WhatsApp</label><input type="tel" name="phone" class="form-input" placeholder="+1 555 000 0000" value="{{ admin_acct.phone if admin_acct else '' }}"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password {% if action=='edit' %}<span style="color:var(--text-muted);font-weight:400;">(leave blank to keep current)</span>{% else %}<span>*</span>{% endif %}</label>
+          <input type="password" name="password" class="form-input" placeholder="Min 6 characters" {{ 'required' if action=='new' }} autocomplete="new-password">
+        </div>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+          <button type="submit" class="btn btn-blue btn-lg" style="flex:1;justify-content:center;">{{ '✅ Save Changes' if action=='edit' else '👑 Add Super Admin' }}</button>
+          <a href="/admin/admins" class="btn btn-outline-blue" style="align-self:center;">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

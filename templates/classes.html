@@ -2,7 +2,7 @@
 {% block title %}Classes & Curriculum - GJPP{% endblock %}
 {% block extra_css %}
 <style>
-.levels-hero{display:grid;grid-template-columns:repeat(2,1fr);gap:0.65rem;margin-bottom:2rem;}
+.levels-hero{display:grid;grid-template-columns:repeat(2,1fr);gap:0.65rem;margin-bottom:2.25rem;}
 @media(min-width:480px){.levels-hero{grid-template-columns:repeat(3,1fr);}}
 @media(min-width:768px){.levels-hero{grid-template-columns:repeat(5,1fr);}}
 .lhc{border-radius:11px;padding:1.1rem 0.6rem;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer;transition:transform 0.2s;}
@@ -12,10 +12,35 @@
 .lhc .ic{font-size:1.6rem;margin-bottom:0.3rem;}
 .lhc h3{font-family:'Playfair Display',serif;font-size:0.95rem;margin-bottom:0.1rem;font-weight:700;}
 .lhc p{font-size:0.68rem;opacity:0.8;}
-.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
-.sc-head{padding:0.85rem 1.1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:0.5rem;}
-.sc-head h2{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:0.35rem;}
+
+.sched-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;flex-wrap:wrap;gap:0.6rem;}
+.sched-section-head h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:800;color:var(--jain-blue);}
+.sched-section-head p{color:var(--text-muted);font-size:0.86rem;margin-top:0.15rem;}
+
+.region-group{margin-bottom:1.75rem;}
+.region-group-head{display:flex;align-items:center;gap:0.55rem;margin-bottom:0.85rem;padding-bottom:0.6rem;border-bottom:2px solid var(--border);}
+.region-group-head .flag{font-size:1.35rem;}
+.region-group-head h3{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);}
+.region-group-head .count{margin-left:auto;font-size:0.72rem;font-weight:800;color:var(--text-muted);background:var(--bg);padding:0.2rem 0.65rem;border-radius:100px;}
+
+.sched-grid{display:grid;grid-template-columns:1fr;gap:0.85rem;}
+@media(min-width:560px){.sched-grid{grid-template-columns:repeat(2,1fr);}}
+@media(min-width:900px){.sched-grid{grid-template-columns:repeat(3,1fr);}}
+
+.sched-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;transition:all 0.2s;display:flex;flex-direction:column;}
+.sched-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(13,43,110,0.12);border-color:transparent;}
+.sched-card-top{padding:1.1rem 1.1rem 0.9rem;border-top:4px solid var(--card-color,var(--jain-blue));flex:1;}
+.sched-card-icon-row{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.7rem;}
+.sched-card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:color-mix(in srgb, var(--card-color,var(--jain-blue)) 14%, white);flex-shrink:0;}
+.sched-card h4{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--jain-blue);}
+.sched-card .fmt-badge{display:inline-block;font-size:0.66rem;font-weight:800;padding:0.16rem 0.55rem;border-radius:100px;background:var(--bg);color:var(--text-mid);border:1px solid var(--border);}
+.sched-meta-row{display:flex;align-items:center;gap:0.5rem;font-size:0.84rem;color:var(--text-mid);font-weight:600;margin-top:0.55rem;}
+.sched-meta-row .mi{font-size:0.9rem;flex-shrink:0;}
+.sched-card-foot{padding:0.75rem 1.1rem;border-top:1px solid var(--border);background:var(--bg);}
+
+.empty-schedule{padding:3rem 1.5rem;text-align:center;background:#fff;border:1.5px dashed var(--border);border-radius:14px;color:var(--text-muted);}
+.empty-schedule .ic{font-size:2.2rem;margin-bottom:0.6rem;}
+
 .curriculum-grid{display:grid;grid-template-columns:1fr;gap:0.85rem;margin-bottom:2rem;}
 @media(min-width:560px){.curriculum-grid{grid-template-columns:repeat(2,1fr);}}
 .curriculum-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.1rem;border-left:4px solid;}
@@ -26,6 +51,7 @@
 .cta-wrap{text-align:center;padding:2rem 1rem;}
 .cta-wrap h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.5rem;}
 .cta-btns{display:flex;gap:0.65rem;justify-content:center;flex-wrap:wrap;margin-top:1.1rem;}
+.region-banner{background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.4rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.6rem;}
 </style>
 {% endblock %}
 {% block content %}
@@ -37,6 +63,15 @@
   </div>
 </div>
 <div class="container section">
+  {% if user and user.role not in ('admin','regional_admin') %}
+  <div class="region-banner">
+    <div>
+      <div style="font-size:0.64rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.4);margin-bottom:0.15rem;">Showing classes for your region</div>
+      <div style="font-size:0.92rem;font-weight:800;color:#fff;">{{ region_label(user.region) }} · Enrollment is limited to your account's region</div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="levels-hero">
     <a href="#beginner" class="lhc" style="background:linear-gradient(135deg,#f59e0b,#d97706);text-decoration:none;"><div class="ic">🌱</div><h3>Beginner</h3><p>Ages 3–6</p></a>
     <a href="#level1"   class="lhc" style="background:linear-gradient(135deg,#10b981,#059669);text-decoration:none;"><div class="ic">🌿</div><h3>Level 1</h3><p>Ages 6–8</p></a>
@@ -45,28 +80,59 @@
     <a href="#adult"    class="lhc" style="background:linear-gradient(135deg,#ec4899,#db2777);text-decoration:none;"><div class="ic">🕉️</div><h3>Adult Track</h3><p>Ages 18+</p></a>
   </div>
 
-  <div class="sc">
-    <div class="sc-head"><h2>Global Class Schedule</h2><a href="/register/student" class="btn btn-blue btn-sm">Enroll Now →</a></div>
-    <div class="tbl-wrap">
-    <table class="tbl">
-      <thead><tr><th>Level</th><th>Region</th><th>Day & Time</th><th>Format</th><th></th></tr></thead>
-      <tbody>
-        {% set schedules=[("Beginner","#f59e0b","North America 🇺🇸","Sun 10:00 AM EST","Online"),("Level 1","#10b981","North America 🇺🇸","Sun 11:00 AM EST","Online"),("Level 2","#3b82f6","North America 🇺🇸","Sun 12:00 PM EST","Online"),("Level 3+","#8b5cf6","North America 🇺🇸","Sat 9:00 AM EST","Online"),("Beginner","#f59e0b","UK 🇬🇧","Sun 10:00 AM GMT","Online + In-person"),("Level 1","#10b981","UK 🇬🇧","Sun 11:30 AM GMT","Online"),("Level 2","#3b82f6","Europe 🇪🇺","Sat 10:00 AM CET","Online"),("Beginner","#f59e0b","India 🇮🇳","Sun 9:00 AM IST","In-person + Online"),("Adult Track","#ec4899","India 🇮🇳","Sun 7:00 AM IST","Online"),("Beginner","#f59e0b","Australia 🇦🇺","Sun 10:00 AM AEST","Online"),("Level 1","#10b981","Australia 🇦🇺","Sun 11:00 AM AEST","Online")] %}
-        {% for level,color,region,time,fmt in schedules %}
-        <tr>
-          <td><span class="dot" style="background:{{ color }};"></span><strong>{{ level }}</strong></td>
-          <td style="white-space:nowrap;font-size:0.82rem;">{{ region }}</td>
-          <td style="white-space:nowrap;font-size:0.82rem;">{{ time }}</td>
-          <td><span class="badge badge-blue" style="font-size:0.62rem;">{{ fmt }}</span></td>
-          <td><a href="/register/student" class="btn btn-blue btn-sm">Enroll</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- SCHEDULE — card-based, grouped by region -->
+  <div class="sched-section-head">
+    <div>
+      <h2>{{ 'Your Class Schedule' if (user and user.role not in ('admin','regional_admin')) else 'Global Class Schedule' }}</h2>
+      <p>{{ 'Weekly sessions available in your region' if (user and user.role not in ('admin','regional_admin')) else 'Weekly sessions across every GJPP region' }}</p>
     </div>
+    <a href="/register/student" class="btn btn-blue">Enroll Now →</a>
   </div>
 
-  <div style="margin-bottom:0.85rem;"><div class="section-label">What We Teach</div><h2 class="section-title" style="font-size:1.6rem;">Curriculum Overview</h2></div>
+  {% if region_groups %}
+    {% for grp in region_groups %}
+    <div class="region-group">
+      {% if region_groups|length > 1 %}
+      <div class="region-group-head">
+        <span class="flag">{{ grp.region.flag }}</span>
+        <h3>{{ grp.region.name }}</h3>
+        <span class="count">{{ grp.classes|length }} class{{ 'es' if grp.classes|length != 1 }}</span>
+      </div>
+      {% endif %}
+      <div class="sched-grid">
+        {% for s in grp.classes %}
+        <div class="sched-card" style="--card-color:{{ s.color }};">
+          <div class="sched-card-top">
+            <div class="sched-card-icon-row">
+              <div class="sched-card-icon">{{ s.icon }}</div>
+              <div>
+                <h4>{{ s.level }}</h4>
+                <span class="fmt-badge">{{ s.format }}</span>
+              </div>
+            </div>
+            <div class="sched-meta-row"><span class="mi">📅</span> {{ s.day }}</div>
+            <div class="sched-meta-row"><span class="mi">🕐</span> {{ s.time }}</div>
+            {% if region_groups|length == 1 %}
+            <div class="sched-meta-row"><span class="mi">🌍</span> {{ grp.region.name }}</div>
+            {% endif %}
+          </div>
+          <div class="sched-card-foot">
+            <a href="/register/student" class="btn btn-blue btn-sm btn-block">Enroll in {{ s.level }} →</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-schedule">
+    <div class="ic">🗓️</div>
+    <div style="font-weight:700;color:var(--jain-blue);margin-bottom:0.3rem;">No scheduled classes for your region yet</div>
+    <p style="font-size:0.875rem;">Check back soon, or <a href="/enquiry" style="color:var(--jain-blue);font-weight:700;">contact us</a> to ask about starting one.</p>
+  </div>
+  {% endif %}
+
+  <div style="margin:2.5rem 0 0.85rem;"><div class="section-label">What We Teach</div><h2 class="section-title" style="font-size:1.6rem;">Curriculum Overview</h2></div>
   <div class="curriculum-grid">
     <div class="curriculum-card" id="beginner" style="border-left-color:#f59e0b;">
       <h3>Beginner (Ages 3–6)</h3><span class="age-tag" style="background:rgba(245,158,11,0.1);color:#92400e;">Foundation</span>

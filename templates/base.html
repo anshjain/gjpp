@@ -483,7 +483,12 @@
         </button>
       {% else %}
         {% set rf={'north_america':'🇺🇸','uk':'🇬🇧','europe':'🇪🇺','india':'🇮🇳','australia':'🇦🇺','south_america':'🇧🇷'} %}
-        <span class="nav-pill loc">{{ rf.get(u.region,'🌍') }} {{ u.city or region_label(u.region) }}</span>
+        {% if u.role == 'admin' %}
+          {% set active_r = get_admin_active_region() %}
+          <span class="nav-pill loc">{{ active_r.flag }} {{ active_r.name }} <span style="opacity:0.55;">(viewing)</span></span>
+        {% else %}
+          <span class="nav-pill loc">{{ rf.get(u.region,'🌍') }} {{ u.city or region_label(u.region) }}</span>
+        {% endif %}
         <a href="/dashboard" class="nav-pill ghost user-pill">
           <span class="nav-avatar">{{ u.name[0].upper() }}</span>
           <span>{{ u.name.split()[0] }}</span>
@@ -558,12 +563,20 @@
         <div class="sb-section">People</div>
         <a href="/admin/students"   class="sb-link {{ 'active' if '/admin/students' in request.path }}"><span class="si">🎓</span> Students</a>
         <a href="/admin/teachers"   class="sb-link {{ 'active' if '/admin/teachers' in request.path }}"><span class="si">📖</span> Teachers</a>
+        <a href="/admin/parents"    class="sb-link {{ 'active' if '/admin/parents' in request.path }}"><span class="si">👨‍👩‍👦</span> Parents</a>
         <a href="/admin/volunteers" class="sb-link {{ 'active' if '/admin/volunteers' in request.path }}"><span class="si">🤝</span> Volunteers</a>
+        <div class="sb-section">Administration</div>
+        <a href="/admin/regional-admins" class="sb-link {{ 'active' if '/admin/regional-admins' in request.path }}"><span class="si">🛡️</span> Regional Admins</a>
+        <a href="/admin/admins"          class="sb-link {{ 'active' if request.path.startswith('/admin/admins') }}"><span class="si">👑</span> Super Admins</a>
         <div class="sb-section">Content</div>
         <a href="/admin/events"     class="sb-link {{ 'active' if '/admin/events' in request.path }}"><span class="si">📅</span> Events</a>
         <a href="/materials"        class="sb-link {{ 'active' if request.path=='/materials' }}"><span class="si">📂</span> Study Materials</a>
         <a href="/materials/upload" class="sb-link {{ 'active' if '/materials/upload' in request.path }}"><span class="si">⬆️</span> Upload Material</a>
         <a href="/classes"          class="sb-link"><span class="si">📚</span> Curriculum</a>
+        <div class="sb-section">Study Scheduler</div>
+        <a href="/admin/scheduler"  class="sb-link {{ 'active' if request.path=='/admin/scheduler' }}"><span class="si">🌍</span> Global Study Schedule</a>
+        <a href="/curriculum"       class="sb-link {{ 'active' if '/curriculum' in request.path }}"><span class="si">🗂️</span> Curriculum Manager</a>
+        <a href="/admin/class-times" class="sb-link {{ 'active' if request.path=='/admin/class-times' }}"><span class="si">🕐</span> Class Meeting Times</a>
         <a href="/admin/festivals"  class="sb-link {{ 'active' if request.path=='/admin/festivals' }}"><span class="si">🪔</span> Festival Config</a>
         <div class="sb-section">Admin</div>
         <a href="/admin/location-requests" class="sb-link {{ 'active' if '/admin/location-requests' in request.path }}">
@@ -582,7 +595,8 @@
         <a href="/radmin/teachers"  class="sb-link {{ 'active' if '/radmin/teachers' in request.path }}"><span class="si">📖</span> My Teachers</a>
         <a href="/radmin/events"    class="sb-link {{ 'active' if '/radmin/events' in request.path }}"><span class="si">📅</span> Events</a>
         <div class="sb-section">Study Scheduler</div>
-        <a href="/radmin/scheduler" class="sb-link {{ 'active' if '/radmin/scheduler' in request.path }}"><span class="si">🗓️</span> Six-Week Schedule</a>
+        <a href="/radmin/scheduler" class="sb-link {{ 'active' if '/radmin/scheduler' in request.path }}"><span class="si">🗓️</span> Study Schedule</a>
+        <a href="/radmin/class-times" class="sb-link {{ 'active' if request.path=='/radmin/class-times' }}"><span class="si">🕐</span> Class Meeting Times</a>
         <div class="sb-section">Content</div>
         <a href="/materials"        class="sb-link {{ 'active' if request.path=='/materials' }}"><span class="si">📂</span> Study Materials</a>
         <a href="/materials/upload" class="sb-link {{ 'active' if '/materials/upload' in request.path }}"><span class="si">⬆️</span> Upload Material</a>

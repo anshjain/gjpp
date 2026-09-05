@@ -32,8 +32,8 @@
     {% if homework %}
       {% for h in homework %}
       <div class="hw-item">
-        {% if h.session %}
-        <div class="hw-session">Week {{ h.session.week_number }} · Day {{ h.session.day_in_week }} — {{ h.session.title }}</div>
+        {% if h.week %}
+        <div class="hw-session">Week {{ h.week.week_number }} — {{ h.week.title }}</div>
         {% endif %}
         <div class="hw-title">{{ h.title }}</div>
         {% if h.description %}<p class="hw-desc">{{ h.description }}</p>{% endif %}

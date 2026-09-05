@@ -32,9 +32,6 @@
       <form method="POST" action="/verify/{{ channel }}/resend" style="margin-top:0.85rem;">
         <button type="submit" class="btn btn-outline-blue btn-block">↺ Resend Code</button>
       </form>
-      {% if user.verification_code %}
-      <div class="demo-hint">🧪 Demo mode — your current code is <strong>{{ user.verification_code }}</strong> (no real email/SMS is sent).</div>
-      {% endif %}
       <div style="text-align:center;margin-top:1.1rem;">
         <a href="/profile" style="font-size:0.85rem;color:var(--jain-blue);font-weight:700;text-decoration:none;">← Back to Profile</a>
       </div>

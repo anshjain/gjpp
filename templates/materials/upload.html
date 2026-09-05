@@ -48,16 +48,6 @@
               {% endfor %}
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">File Type</label>
-            <select name="file_type" class="form-select">
-              <option value="pdf">PDF Document</option>
-              <option value="video">Video</option>
-              <option value="doc">Word Document</option>
-              <option value="ppt">Presentation</option>
-              <option value="image">Image</option>
-            </select>
-          </div>
         </div>
 
         {% if user.role == 'admin' %}
@@ -81,19 +71,14 @@
         <div class="upload-zone" onclick="document.getElementById('file-input').click()">
           <div class="uz-icon">📁</div>
           <div style="font-weight:700;color:var(--jain-blue);">Click to select file</div>
-          <p>PDF, Video, Word, PowerPoint or Image · Max 50MB</p>
-          <input type="file" id="file-input" name="file" accept=".pdf,.mp4,.doc,.docx,.ppt,.pptx,.png,.jpg" style="display:none;" onchange="updateFileName(this)">
+          <p>PDF or Image (PNG, JPG, GIF, WebP) · Max 4MB</p>
+          <input type="file" id="file-input" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" required style="display:none;" onchange="updateFileName(this)">
         </div>
         <div id="file-name-display" style="font-size:0.82rem;color:var(--jain-blue);font-weight:700;margin-top:0.6rem;display:none;"></div>
-
-        <!-- File name fallback for demo (since we don't have actual file storage) -->
-        <div class="form-group" style="margin-top:1rem;">
-          <label class="form-label">File Name <span style="color:var(--text-muted);font-weight:400;">(or enter manually for demo)</span></label>
-          <input type="text" name="file_name" class="form-input" placeholder="e.g. navkar_guide.pdf">
-        </div>
+        <div id="file-error-display" style="font-size:0.82rem;color:var(--jain-red);font-weight:700;margin-top:0.6rem;display:none;"></div>
 
         <div style="display:flex;gap:1rem;margin-top:1.5rem;">
-          <button type="submit" class="btn btn-blue btn-lg" style="flex:1;justify-content:center;">📤 Upload Material</button>
+          <button type="submit" id="upload-submit-btn" class="btn btn-blue btn-lg" style="flex:1;justify-content:center;">📤 Upload Material</button>
           <a href="/materials" class="btn btn-outline-blue btn-lg" style="flex:0.4;justify-content:center;">Cancel</a>
         </div>
       </form>
@@ -101,14 +86,38 @@
   </div>
 </div>
 <script>
+const MAX_MATERIAL_BYTES = 4 * 1024 * 1024; // 4MB — must match MAX_MATERIAL_SIZE_BYTES in app.py
+const ALLOWED_EXTS = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
+
 function updateFileName(input) {
-  const display = document.getElementById('file-name-display');
-  if (input.files && input.files[0]) {
-    display.textContent = '✅ Selected: ' + input.files[0].name;
-    display.style.display = 'block';
-    const nameInput = document.querySelector('[name="file_name"]');
-    if (nameInput && !nameInput.value) nameInput.value = input.files[0].name;
+  const nameDisplay = document.getElementById('file-name-display');
+  const errorDisplay = document.getElementById('file-error-display');
+  const submitBtn = document.getElementById('upload-submit-btn');
+  errorDisplay.style.display = 'none';
+  nameDisplay.style.display = 'none';
+  submitBtn.disabled = false;
+
+  if (!(input.files && input.files[0])) return;
+  const file = input.files[0];
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (!ALLOWED_EXTS.includes(ext)) {
+    errorDisplay.textContent = '❌ Only PDF and image files (PNG, JPG, GIF, WebP) are allowed.';
+    errorDisplay.style.display = 'block';
+    submitBtn.disabled = true;
+    input.value = '';
+    return;
   }
+  if (file.size > MAX_MATERIAL_BYTES) {
+    errorDisplay.textContent = `❌ File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB) — the maximum is 4MB.`;
+    errorDisplay.style.display = 'block';
+    submitBtn.disabled = true;
+    input.value = '';
+    return;
+  }
+
+  nameDisplay.textContent = `✅ Selected: ${file.name} (${(file.size / 1024).toFixed(0)}KB)`;
+  nameDisplay.style.display = 'block';
 }
 </script>
 {% endblock %}

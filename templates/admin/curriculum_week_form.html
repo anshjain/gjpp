@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Edit Week {{ week.week_number }} - {{ level_name(level_id) }} - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;display:flex;justify-content:center;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.form-card{background:#fff;border-radius:16px;border:1.5px solid var(--border);box-shadow:var(--shadow-lg);overflow:hidden;width:100%;max-width:620px;}
+.form-head{padding:1.5rem;background:linear-gradient(135deg,var(--jain-blue),var(--blue-mid));}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:800;color:#fff;}
+.form-head p{color:rgba(255,255,255,0.6);font-size:0.82rem;margin-top:0.2rem;}
+.form-body{padding:1.5rem;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>✏️ Week {{ week.week_number }} — {{ level_name(level_id) }}</h2>
+      <p>Update the title and study content shown to teachers and parents for this week.</p>
+    </div>
+    <div class="form-body">
+      <form method="POST">
+        <div class="form-group">
+          <label class="form-label">Week Title <span>*</span></label>
+          <input type="text" name="title" class="form-input" required value="{{ week.title }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Study Content / Activities</label>
+          <textarea name="content" class="form-textarea" style="min-height:140px;" placeholder="Describe the lesson, activities, and materials for this week…">{{ week.content }}</textarea>
+        </div>
+        <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+          <button type="submit" class="btn btn-blue btn-lg" style="flex:1;justify-content:center;">Save Week</button>
+          <a href="/curriculum/{{ level_id }}" class="btn btn-outline-blue" style="align-self:center;">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

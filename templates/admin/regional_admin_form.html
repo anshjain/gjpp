@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if action=='edit' else 'Add' }} Regional Admin - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;display:flex;justify-content:center;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.form-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;overflow:hidden;width:100%;max-width:600px;box-shadow:var(--shadow-lg);}
+.form-head{padding:1.5rem 1.75rem;background:linear-gradient(135deg,#5B1A8A,#3D0F6A);position:relative;overflow:hidden;}
+.form-head::before{content:'🛡️';position:absolute;right:1.5rem;top:50%;transform:translateY(-50%);font-size:4rem;opacity:0.12;}
+.form-head h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:800;color:#fff;}
+.form-head p{color:rgba(255,255,255,0.6);font-size:0.82rem;margin-top:0.25rem;}
+.form-body{padding:1.5rem 1.75rem;}
+.fsect{font-family:'Playfair Display',serif;font-size:0.9rem;font-weight:700;color:var(--jain-blue);margin:1rem 0 0.7rem;padding-bottom:0.35rem;border-bottom:2px solid var(--jain-blue);}
+.fsect:first-child{margin-top:0;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="form-card">
+    <div class="form-head">
+      <h2>{{ '✏️ Edit Regional Admin' if action=='edit' else '➕ Add Regional Admin' }}</h2>
+      <p>{{ 'Update this Regional Admin\'s details.' if action=='edit' else 'Grant someone Regional Admin access — they\'ll manage students, teachers, events, and materials for one region only.' }}</p>
+    </div>
+    <div class="form-body">
+      <form method="POST">
+        <div class="fsect">Account Details</div>
+        <div class="form-group"><label class="form-label">Full Name <span>*</span></label><input type="text" name="name" class="form-input" required value="{{ radmin.name if radmin else '' }}"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Email <span>*</span></label><input type="email" name="email" class="form-input" required value="{{ radmin.email if radmin else '' }}"></div>
+          <div class="form-group"><label class="form-label">Phone / WhatsApp</label><input type="tel" name="phone" class="form-input" placeholder="+1 555 000 0000" value="{{ radmin.phone if radmin else '' }}"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password {% if action=='edit' %}<span style="color:var(--text-muted);font-weight:400;">(leave blank to keep current)</span>{% else %}<span>*</span>{% endif %}</label>
+          <input type="password" name="password" class="form-input" placeholder="Min 6 characters" {{ 'required' if action=='new' }} autocomplete="new-password">
+        </div>
+
+        <div class="fsect">Assigned Region</div>
+        <div class="form-group">
+          <label class="form-label">Region <span>*</span></label>
+          <select name="region" class="form-select" required>
+            <option value="">Select region…</option>
+            {% for r in regions %}<option value="{{ r.id }}" {% if radmin and radmin.region==r.id %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Country</label><input type="text" name="country" class="form-input" value="{{ radmin.country if radmin else '' }}"></div>
+          <div class="form-group"><label class="form-label">City</label><input type="text" name="city" class="form-input" value="{{ radmin.city if radmin else '' }}"></div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+          <button type="submit" class="btn btn-lg" style="flex:1;justify-content:center;background:#5B1A8A;color:#fff;">{{ '✅ Save Changes' if action=='edit' else '🛡️ Add Regional Admin' }}</button>
+          <a href="/admin/regional-admins" class="btn btn-outline-blue" style="align-self:center;">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -15,6 +15,18 @@
 .level-opt label strong { display:block; font-size:0.78rem; color:var(--jain-blue); }
 .level-opt label span { font-size:0.64rem; color:var(--text-muted); }
 .level-opt input:checked + label { border-color:var(--jain-blue); background:var(--blue-light); }
+.level-opt-disabled label { opacity:0.5; cursor:not-allowed; background:var(--bg); }
+.level-opt-disabled input:checked + label { border-color:var(--border); background:var(--bg); }
+.closed-tag { display:block; font-size:0.58rem; font-weight:800; color:var(--jain-red); margin-top:0.2rem; text-transform:uppercase; letter-spacing:0.03em; }
+.schedule-placeholder { padding:0.9rem 1rem; background:var(--bg); border:1.5px dashed var(--border); border-radius:9px; font-size:0.84rem; color:var(--text-muted); text-align:center; }
+.slot-options { display:flex; flex-direction:column; gap:0.5rem; }
+.slot-opt { position:relative; }
+.slot-opt input { position:absolute; opacity:0; }
+.slot-opt label { display:flex; align-items:center; gap:0.65rem; padding:0.75rem 0.95rem; border:1.5px solid var(--border); border-radius:10px; cursor:pointer; transition:all 0.18s; background:#fff; }
+.slot-opt input:checked + label { border-color:var(--jain-blue); background:var(--blue-light); }
+.slot-opt .slot-icon { font-size:1.1rem; flex-shrink:0; }
+.slot-opt .slot-main { font-weight:800; color:var(--jain-blue); font-size:0.88rem; }
+.slot-opt .slot-sub { font-size:0.74rem; color:var(--text-muted); margin-top:0.1rem; }
 .gender-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.35rem; }
 .gender-row label { display:flex; align-items:center; gap:0.4rem; padding:0.45rem 0.8rem; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; font-size:0.82rem; font-weight:600; background:var(--bg); transition:all 0.18s; }
 .gender-row input { accent-color:var(--jain-blue); width:14px; height:14px; }
@@ -50,7 +62,7 @@
 <div class="reg-layout">
   <div>
     <div class="account-note">
-      🔑 <strong>Already have a GJPP account?</strong> <a href="/login?role=parent">Log in first</a> to skip creating a new password below — your new child will be added straight to your existing account.
+      🔑 <strong>Already have a GJPP account?</strong> <a href="/login">Log in first</a> to skip creating a new password below — your new child will be added straight to your existing account.
     </div>
 
     <form method="POST" action="/register/student">
@@ -79,28 +91,43 @@
             <label class="form-label">Class Level <span>*</span></label>
             <div class="level-grid">
               {% for level in levels %}
-              <div class="level-opt">
-                <input type="radio" name="level" id="lvl-{{ level.id }}" value="{{ level.id }}" required>
-                <label for="lvl-{{ level.id }}"><strong>{{ level.name }}</strong><span>{{ level.age }}</span></label>
+              {% set is_open = LEVEL_REGISTRATION_OPEN.get(level.id, True) %}
+              <div class="level-opt {{ 'level-opt-disabled' if not is_open }}">
+                <input type="radio" name="level" id="lvl-{{ level.id }}" value="{{ level.id }}" required
+                  {{ 'disabled' if not is_open }} onchange="onLevelOrRegionChange()">
+                <label for="lvl-{{ level.id }}"><strong>{{ level.name }}</strong><span>{{ level.age }}</span>
+                  {% if not is_open %}<span class="closed-tag">Registration Closed</span>{% endif %}
+                </label>
               </div>
               {% endfor %}
             </div>
           </div>
-          <div class="form-grid" style="padding-bottom:1.25rem;">
-            <div class="form-group">
-              <label class="form-label">Region <span>*</span></label>
-              <select name="region" class="form-select" required>
-                <option value="">Select your region…</option>
-                {% for region in regions %}<option value="{{ region.id }}">{{ region.flag }} {{ region.name }}</option>{% endfor %}
-              </select>
+          <div class="form-group" style="padding-bottom:1.25rem;">
+            <label class="form-label">Region <span>*</span></label>
+            {% if user and user.role != 'admin' %}
+            {% set locked_region = regions|selectattr('id','equalto',user.region)|first %}
+            <div style="display:flex;align-items:center;gap:0.6rem;background:var(--blue-light);border-radius:9px;padding:0.75rem 0.95rem;font-weight:700;color:var(--jain-blue);">
+              <span style="font-size:1.1rem;">{{ locked_region.flag if locked_region }}</span>
+              <span>{{ locked_region.name if locked_region else region_label(user.region) }}</span>
+              <span style="margin-left:auto;font-size:0.72rem;font-weight:600;color:var(--text-muted);">🔒 Locked to your account's region</span>
             </div>
-            <div class="form-group">
-              <label class="form-label">Preferred Class Day <span>*</span></label>
-              <select name="class_day" class="form-select" required>
-                <option value="">Select a day…</option>
-                {% for day in class_days %}<option value="{{ day }}">{{ day }}</option>{% endfor %}
-              </select>
-            </div>
+            <input type="hidden" name="region" id="region-field" value="{{ user.region }}">
+            {% else %}
+            <select name="region" id="region-field" class="form-select" required onchange="onLevelOrRegionChange()">
+              <option value="">Select your region…</option>
+              {% for region in regions %}<option value="{{ region.id }}">{{ region.flag }} {{ region.name }}</option>{% endfor %}
+            </select>
+            {% endif %}
+          </div>
+          <div class="form-group" style="padding-bottom:1.25rem;">
+            <label class="form-label">Class Day &amp; Time <span>*</span></label>
+            <div id="schedule-placeholder" class="schedule-placeholder">Select a level{% if not (user and user.role != 'admin') %} and region{% endif %} to see available class times.</div>
+            <div id="schedule-loading" class="schedule-placeholder" style="display:none;">Loading class times…</div>
+            <div id="schedule-empty" class="schedule-placeholder" style="display:none;">No class times are scheduled for this level yet — we'll contact you to arrange one.</div>
+            <div id="schedule-slots" class="slot-options" style="display:none;"></div>
+            <input type="hidden" name="class_day" id="hidden-class-day">
+            <input type="hidden" name="class_time" id="hidden-class-time">
+            <input type="hidden" name="class_label" id="hidden-class-label">
           </div>
         </div>
 
@@ -143,8 +170,13 @@
                 {% for c in countries %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
               </select>
             </div>
-            <div class="form-group" style="padding-bottom:1.25rem;"><label class="form-label">City</label><input type="text" name="city" class="form-input" placeholder="e.g. New York"></div>
+            <div class="form-group"><label class="form-label">City</label><input type="text" name="city" class="form-input" placeholder="e.g. New York"></div>
           </div>
+          <div class="form-group">
+            <label class="form-label">Full Address <span>*</span></label>
+            <textarea name="address" class="form-textarea" style="min-height:70px;" placeholder="Street address, apartment/suite, etc." required></textarea>
+          </div>
+          <div class="form-group" style="padding-bottom:1.25rem;"><label class="form-label">Postal / ZIP Code</label><input type="text" name="postal_code" class="form-input" placeholder="e.g. 10001"></div>
         </div>
 
         <!-- Agreement -->
@@ -167,7 +199,7 @@
   <div class="reg-sidebar">
     <div class="sidebar-card">
       <h3>📋 What Happens Next?</h3>
-      <div class="info-row"><span class="icon">🧑‍🏫</span><span>A teacher is auto-assigned based on your child's level and chosen class day.</span></div>
+      <div class="info-row"><span class="icon">🧑‍🏫</span><span>A teacher is auto-assigned based on your child's level and region.</span></div>
       <div class="info-row"><span class="icon">✅</span><span>You'll receive a WhatsApp confirmation with your class details and schedule.</span></div>
       <div class="info-row"><span class="icon">🔐</span><span>Verify your email and phone from your dashboard to unlock all features.</span></div>
       <div class="info-row"><span class="icon">🎂</span><span>Your child's birthday is shared with their teacher for a class birthday card!</span></div>
@@ -183,4 +215,85 @@
     </div>
   </div>
 </div>
+
+<script>
+let currentSlots = [];
+
+function getSelectedLevel() {
+  const checked = document.querySelector('input[name="level"]:checked');
+  return checked ? checked.value : null;
+}
+
+function getRegionValue() {
+  const field = document.getElementById('region-field');
+  return field ? field.value : null;
+}
+
+async function onLevelOrRegionChange() {
+  const level = getSelectedLevel();
+  const region = getRegionValue();
+
+  const placeholder = document.getElementById('schedule-placeholder');
+  const loading      = document.getElementById('schedule-loading');
+  const empty        = document.getElementById('schedule-empty');
+  const slotsWrap     = document.getElementById('schedule-slots');
+
+  if (!level || !region) {
+    placeholder.style.display = 'block';
+    loading.style.display = 'none';
+    empty.style.display = 'none';
+    slotsWrap.style.display = 'none';
+    slotsWrap.innerHTML = '';
+    return;
+  }
+
+  placeholder.style.display = 'none';
+  empty.style.display = 'none';
+  slotsWrap.style.display = 'none';
+  loading.style.display = 'block';
+
+  try {
+    const res = await fetch(`/api/class-times/${region}/${level}`);
+    const data = await res.json();
+    currentSlots = data.slots || [];
+    loading.style.display = 'none';
+
+    if (currentSlots.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    slotsWrap.innerHTML = currentSlots.map((s, i) => `
+      <div class="slot-opt">
+        <input type="radio" name="slot_index" id="slot-${i}" value="${i}" ${currentSlots.length === 1 ? 'checked' : ''} required onchange="onSlotChange()">
+        <label for="slot-${i}">
+          <span class="slot-icon">🕐</span>
+          <div>
+            <div class="slot-main">${s.day} · ${s.time}</div>
+            ${s.label ? `<div class="slot-sub">${s.label}</div>` : ''}
+          </div>
+        </label>
+      </div>
+    `).join('');
+    slotsWrap.style.display = 'flex';
+
+    if (currentSlots.length === 1) onSlotChange();
+  } catch (err) {
+    loading.style.display = 'none';
+    empty.textContent = 'Could not load class times right now — please try again.';
+    empty.style.display = 'block';
+  }
+}
+
+function onSlotChange() {
+  const checked = document.querySelector('input[name="slot_index"]:checked');
+  const slot = checked ? currentSlots[parseInt(checked.value, 10)] : null;
+  document.getElementById('hidden-class-day').value   = slot ? slot.day   : '';
+  document.getElementById('hidden-class-time').value  = slot ? slot.time  : '';
+  document.getElementById('hidden-class-label').value = slot ? (slot.label || '') : '';
+}
+
+// If the region is locked (logged-in user), fetch immediately once a level is chosen.
+document.addEventListener('DOMContentLoaded', onLevelOrRegionChange);
+</script>
 {% endblock %}

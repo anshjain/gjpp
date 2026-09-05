@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Curriculum Manager - GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+.info-box{background:var(--blue-light);border-radius:9px;padding:0.85rem 1rem;font-size:0.8rem;color:var(--text-mid);line-height:1.55;margin-bottom:1.5rem;}
+.level-grid{display:grid;grid-template-columns:1fr;gap:1rem;}
+@media(min-width:640px){.level-grid{grid-template-columns:repeat(2,1fr);}}
+.level-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.level-top{padding:1.1rem 1.25rem;border-top:4px solid var(--jain-blue);}
+.level-top h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.15rem;}
+.level-top .age{font-size:0.78rem;color:var(--text-muted);}
+.dur-row{display:flex;align-items:center;gap:0.6rem;margin-top:1rem;}
+.dur-row input{width:80px;}
+.week-progress{margin-top:0.85rem;font-size:0.76rem;color:var(--text-muted);}
+.level-foot{padding:0.85rem 1.25rem;border-top:1px solid var(--border);background:var(--bg);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-title">Curriculum Manager</div>
+  <div class="pg-sub">Each level has its own independent weekly curriculum — set the course length (6–30 weeks) and design each week's content.</div>
+
+  <div class="info-box">
+    📚 <strong>How this works:</strong> Every level runs its own complete set of weekly sessions, fully independent of other levels. Changing a level's duration adds or trims weeks at the end — content already designed for earlier weeks is always preserved.
+  </div>
+
+  <div class="level-grid">
+    {% for ld in levels_data %}
+    <div class="level-card">
+      <div class="level-top">
+        <h3>{{ ld.level.name }}</h3>
+        <div class="age">{{ ld.level.age }} · {{ ld.level.id }}</div>
+
+        <form method="POST" action="/curriculum/{{ ld.level.id }}/duration" class="dur-row">
+          <label class="form-label" style="margin:0;">Duration</label>
+          <input type="number" name="total_weeks" class="form-input" min="{{ min_weeks }}" max="{{ max_weeks }}" value="{{ ld.total_weeks }}">
+          <span style="font-size:0.8rem;color:var(--text-muted);">weeks</span>
+          <button type="submit" class="btn btn-blue btn-sm">Save</button>
+        </form>
+        <div class="week-progress">{{ ld.week_count }} week{{ 's' if ld.week_count != 1 }} of curriculum content designed · range {{ min_weeks }}–{{ max_weeks }} weeks</div>
+      </div>
+      <div class="level-foot">
+        <a href="/curriculum/{{ ld.level.id }}" class="btn btn-outline-blue btn-block">📖 Manage Weekly Content →</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

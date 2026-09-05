@@ -40,7 +40,13 @@
         {% if v.description %}<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.35rem;line-height:1.4;">{{ v.description }}</div>{% endif %}
       </div>
       <div class="vid-foot">
-        <span style="font-size:0.72rem;color:var(--text-muted);">{{ v.video_url }}</span>
+        {% if v.stored_name %}
+        <a href="/videos/{{ v.stored_name }}" target="_blank" style="font-size:0.75rem;color:var(--jain-blue);font-weight:700;text-decoration:none;">▶️ Watch{% if v.file_size %} ({{ v.file_size }}){% endif %}</a>
+        {% elif v.video_url %}
+        <a href="{{ v.video_url }}" target="_blank" rel="noopener" style="font-size:0.75rem;color:var(--jain-blue);font-weight:700;text-decoration:none;">🔗 Open Link</a>
+        {% else %}
+        <span style="font-size:0.72rem;color:var(--text-muted);">No file attached</span>
+        {% endif %}
         <span class="tag tag-green" style="font-size:0.68rem;">Submitted</span>
       </div>
     </div>

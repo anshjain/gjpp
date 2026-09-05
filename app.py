@@ -1,10 +1,145 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, abort, send_from_directory
 from datetime import datetime, date, timedelta
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import uuid
+import os
+import json
+import smtplib
+import logging
+from email.mime.text import MIMEText
+
+try:
+    from twilio.rest import Client as TwilioClient
+except ImportError:
+    TwilioClient = None
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = 'gjpp-secret-key-2024'
+app.secret_key = os.environ.get('SECRET_KEY', 'gjpp-secret-key-2024-dev-only')
+if app.secret_key == 'gjpp-secret-key-2024-dev-only':
+    logging.warning("SECRET_KEY is not set — using an insecure development default. "
+                     "Set the SECRET_KEY environment variable before deploying to production.")
+
+# Hard ceiling on any single request body (defense in depth, on top of the
+# per-file checks below) — generous enough for video uploads, well beyond
+# the 4MB document limit. Requests over this are rejected before any
+# upload handling code runs.
+app.config['MAX_CONTENT_LENGTH'] = 60 * 1024 * 1024  # 60 MB
+
+# ─────────────────────────────────────────
+#  PRODUCTION INTEGRATIONS
+#  (email, WhatsApp/SMS, and file storage — all driven by environment
+#   variables so the same code runs safely in dev and in production;
+#   nothing here is mocked, but sending gracefully no-ops with a log
+#   warning if the relevant credentials haven't been configured yet.)
+# ─────────────────────────────────────────
+
+MAIL_SERVER    = os.environ.get('MAIL_SERVER')
+MAIL_PORT      = int(os.environ.get('MAIL_PORT', 587))
+MAIL_USERNAME  = os.environ.get('MAIL_USERNAME')
+MAIL_PASSWORD  = os.environ.get('MAIL_PASSWORD')
+MAIL_USE_TLS   = os.environ.get('MAIL_USE_TLS', 'true').lower() != 'false'
+MAIL_SENDER    = os.environ.get('MAIL_DEFAULT_SENDER', MAIL_USERNAME or 'no-reply@gjpp.org')
+
+TWILIO_ACCOUNT_SID   = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN    = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_WHATSAPP_FROM = os.environ.get('TWILIO_WHATSAPP_FROM')  # e.g. 'whatsapp:+14155238886'
+
+def email_is_configured():
+    return bool(MAIL_SERVER and MAIL_USERNAME and MAIL_PASSWORD)
+
+def whatsapp_is_configured():
+    return bool(TwilioClient and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM)
+
+def send_email(to_address, subject, body):
+    """Send a real email over SMTP. No-ops with a log warning if MAIL_* env vars aren't set."""
+    if not to_address:
+        return False
+    if not email_is_configured():
+        logging.warning(f"[email not configured] Would send to {to_address}: {subject}")
+        return False
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = MAIL_SENDER
+        msg['To'] = to_address
+        with smtplib.SMTP(MAIL_SERVER, MAIL_PORT, timeout=10) as server:
+            if MAIL_USE_TLS:
+                server.starttls()
+            server.login(MAIL_USERNAME, MAIL_PASSWORD)
+            server.sendmail(MAIL_SENDER, [to_address], msg.as_string())
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send email to {to_address}: {e}")
+        return False
+
+def send_whatsapp(to_phone, message):
+    """Send a real WhatsApp message via Twilio. No-ops with a log warning if not configured."""
+    if not to_phone:
+        return False
+    if not whatsapp_is_configured():
+        logging.warning(f"[WhatsApp not configured] Would send to {to_phone}: {message}")
+        return False
+    try:
+        client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        client.messages.create(
+            from_=TWILIO_WHATSAPP_FROM,
+            to=f"whatsapp:{to_phone}" if not to_phone.startswith('whatsapp:') else to_phone,
+            body=message,
+        )
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send WhatsApp message to {to_phone}: {e}")
+        return False
+
+# ── File storage (local disk under static/uploads — swap for S3/Cloudinary by
+#    changing only the functions below; every route calls through these) ──
+UPLOAD_ROOT = os.path.join(app.static_folder, 'uploads')
+MATERIALS_UPLOAD_DIR = os.path.join(UPLOAD_ROOT, 'materials')
+VIDEOS_UPLOAD_DIR    = os.path.join(UPLOAD_ROOT, 'videos')
+os.makedirs(MATERIALS_UPLOAD_DIR, exist_ok=True)
+os.makedirs(VIDEOS_UPLOAD_DIR, exist_ok=True)
+
+ALLOWED_MATERIAL_EXTS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_VIDEO_EXTS    = {'mp4', 'mov', 'webm', 'm4v'}
+MAX_MATERIAL_SIZE_BYTES = 4 * 1024 * 1024  # 4 MB
+
+def _allowed_file(filename, allowed_exts):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_exts
+
+def save_uploaded_file(file_storage, dest_dir, allowed_exts, max_size_bytes=None):
+    """
+    Validate and save a real uploaded file to disk with a collision-proof name.
+    Checks (in order): a file was actually chosen, its extension is on the
+    allow-list, and — if max_size_bytes is given — it doesn't exceed that size.
+    Returns (stored_filename, size_in_bytes, error_code). error_code is None on
+    success; otherwise stored_filename/size are None and error_code is one of
+    'missing', 'invalid_type', or 'too_large' so the caller can show a precise message.
+    """
+    if not file_storage or not file_storage.filename:
+        return None, None, 'missing'
+    if not _allowed_file(file_storage.filename, allowed_exts):
+        return None, None, 'invalid_type'
+    if max_size_bytes is not None:
+        file_storage.stream.seek(0, os.SEEK_END)
+        size = file_storage.stream.tell()
+        file_storage.stream.seek(0)
+        if size > max_size_bytes:
+            return None, None, 'too_large'
+    safe_name = secure_filename(file_storage.filename)
+    stored_name = f"{uuid.uuid4().hex[:12]}_{safe_name}"
+    dest_path = os.path.join(dest_dir, stored_name)
+    file_storage.save(dest_path)
+    size = os.path.getsize(dest_path)
+    return stored_name, size, None
+
+def human_file_size(num_bytes):
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if num_bytes < 1024:
+            return f"{num_bytes:.1f} {unit}" if unit != 'B' else f"{num_bytes} {unit}"
+        num_bytes /= 1024
+    return f"{num_bytes:.1f} TB"
 
 # ─────────────────────────────────────────
 #  SEED DATA  (replace with DB in prod)
@@ -26,7 +161,6 @@ LEVELS = [
     {"id": "adult",    "name": "Adult Track", "age": "18+ years",  "color": "#FFFFFF"},
 ]
 
-CLASS_DAYS = ["Sunday", "Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
 COUNTRIES = [
     "United States", "Canada", "United Kingdom", "India", "Germany", "France", "Netherlands",
@@ -62,14 +196,14 @@ USERS = {
         "email": "teacher@gjpp.org", "password": "teacher123",
         "name": "Meena Kothari",
         "region": "north_america", "country": "United States", "city": "New York",
-        "class_id": "class-beginner-na", "class_day": "Sunday"
+        "class_id": "class-beginner-na"
     },
     "u-teacher-2": {
         "id": "u-teacher-2", "role": "teacher",
         "email": "teacher2@gjpp.org", "password": "teacher123",
         "name": "Suresh Mehta",
         "region": "india", "country": "India", "city": "Mumbai",
-        "class_id": "class-level1-india", "class_day": "Sunday"
+        "class_id": "class-level1-india"
     },
     "u-radmin-na": {
         "id": "u-radmin-na", "role": "regional_admin",
@@ -101,6 +235,12 @@ for _uid, _u in USERS.items():
     _u.setdefault('email_verified', True)   # seeded demo accounts are pre-verified
     _u.setdefault('phone_verified', True)
     _u.setdefault('verification_code', None)
+    _u.setdefault('reset_token', None)
+    # Hash any seed passwords that are still plaintext (idempotent — safe to run every startup;
+    # werkzeug hashes always contain a ':' separating the algorithm from its parameters/salt,
+    # which no plaintext demo password like "admin123" would ever contain).
+    if ':' not in _u['password']:
+        _u['password'] = generate_password_hash(_u['password'])
 
 # Students store
 STUDENTS = [
@@ -138,6 +278,19 @@ STUDY_MATERIALS = [
     {"id": "m-6", "title": "India Region - Festival Calendar",  "description": "India region Jain festival calendar 2025",          "level": "level1",   "region": "india",         "file_name": "india_calendar.pdf",    "file_size": "1.1 MB", "file_type": "pdf",   "uploaded_by": "u-radmin-india","uploaded_at": "2025-03-05", "downloads": 28},
 ]
 
+# Give each seed material a real placeholder file on disk so downloads work out of the box.
+def _seed_material_files():
+    for mat in STUDY_MATERIALS:
+        stored_name = f"seed_{mat['id']}_{mat['file_name']}"
+        stored_path = os.path.join(MATERIALS_UPLOAD_DIR, stored_name)
+        if not os.path.exists(stored_path):
+            with open(stored_path, 'wb') as f:
+                f.write(f"GJPP placeholder file for: {mat['title']}\n"
+                         f"Replace by uploading a real file through Study Materials > Upload.".encode('utf-8'))
+        mat['stored_name'] = stored_name
+
+_seed_material_files()
+
 # Promotion Records store
 PROMOTIONS = []
 
@@ -158,51 +311,62 @@ VOLUNTEERS = [
 ]
 
 # ─────────────────────────────────────────
-#  STUDY SCHEDULER  (six-week curriculum engine)
+#  STUDY SCHEDULER  (level-based weekly curriculum engine)
 # ─────────────────────────────────────────
 
-# 1. MASTER CURRICULUM — one reusable six-week program (sequence-based, not date-based)
-MASTER_CURRICULUM = {
-    "id": "curriculum-6wk-v1",
-    "name": "Six-Week Foundational Study Program",
-    "total_weeks": 6,
-    "days_per_week": 7,
+MIN_CURRICULUM_WEEKS = 6
+MAX_CURRICULUM_WEEKS = 30
+
+# 1. LEVEL CURRICULA — every level has its own independent duration (6-30 weeks)
+LEVEL_CURRICULA = {
+    "beginner": {"level_id": "beginner", "total_weeks": 6},
+    "level1":   {"level_id": "level1",   "total_weeks": 12},
+    "level2":   {"level_id": "level2",   "total_weeks": 20},
+    "level3":   {"level_id": "level3",   "total_weeks": 30},
+    "adult":    {"level_id": "adult",    "total_weeks": 8},
 }
 
-def _seed_curriculum_sessions():
-    """Generate 42 sequence-based sessions (6 weeks x 7 days). Sequence, not calendar dates."""
-    topics = [
-        "Navkar Mantra — Recitation & Meaning", "Ahimsa in Daily Life", "Jain Symbols — Introduction",
-        "Story: The Merchant's Honesty", "Simple Prayers & Songs", "Review & Reflection", "Week Wrap-up Quiz",
-        "24 Tirthankars — Part 1", "24 Tirthankars — Part 2", "Jain Festivals Calendar", "Five Mahavratas — Intro",
-        "Story: King Shrenik", "Ashtami & Chaturdashi Practices", "Week Wrap-up Quiz",
-        "Nine Tattvas — Foundations", "Samayik — Practice & Meaning", "Karma Theory — Introduction",
-        "Story: Bharat & Bahubali", "Jain Geography — Sacred Places", "Group Discussion: Living Ahimsa", "Week Wrap-up Quiz",
-        "Agam Scriptures — Overview", "Jain History — Key Figures", "Six Substances (Shad Dravya)",
-        "Story: Mahavir's Compassion", "Ethics in Modern Life", "Comparative Reflection", "Week Wrap-up Quiz",
-        "Advanced Tattvagyan — Part 1", "Advanced Tattvagyan — Part 2", "Jain Cosmology — Intro",
-        "Story: Parshvanath's Patience", "Debate: Applying Dharma Today", "Community Seva Project", "Week Wrap-up Quiz",
-        "Bhawna Yog — Guided Reflection", "Jain Philosophy — Synthesis", "Final Review Part 1",
-        "Final Review Part 2", "Student Presentations", "Certificate Preparation", "Graduation & Celebration",
-    ]
-    sessions = []
-    day_number = 1
-    for week in range(1, MASTER_CURRICULUM["total_weeks"] + 1):
-        for day_in_week in range(1, MASTER_CURRICULUM["days_per_week"] + 1):
-            idx = day_number - 1
-            sessions.append({
-                "id": f"sess-{day_number}",
-                "curriculum_id": MASTER_CURRICULUM["id"],
-                "day_number": day_number,
-                "week_number": week,
-                "day_in_week": day_in_week,
-                "title": topics[idx] if idx < len(topics) else f"Week {week} Day {day_in_week} Session",
-                "content": f"Guided study session covering: {topics[idx] if idx < len(topics) else 'core Jain values'}.",
-            })
-            day_number += 1
-    return sessions
+_SAMPLE_TOPICS = [
+    "Navkar Mantra — Recitation & Meaning", "Ahimsa in Daily Life", "Jain Symbols — Introduction",
+    "Story: The Merchant's Honesty", "Simple Prayers & Songs", "Week Review & Reflection",
+    "24 Tirthankars — Part 1", "24 Tirthankars — Part 2", "Jain Festivals Calendar", "Five Mahavratas — Intro",
+    "Story: King Shrenik", "Ashtami & Chaturdashi Practices", "Nine Tattvas — Foundations",
+    "Samayik — Practice & Meaning", "Karma Theory — Introduction", "Story: Bharat & Bahubali",
+    "Jain Geography — Sacred Places", "Group Discussion: Living Ahimsa", "Agam Scriptures — Overview",
+    "Jain History — Key Figures", "Six Substances (Shad Dravya)", "Story: Mahavir's Compassion",
+    "Ethics in Modern Life", "Comparative Reflection", "Advanced Tattvagyan — Part 1",
+    "Advanced Tattvagyan — Part 2", "Jain Cosmology — Intro", "Story: Parshvanath's Patience",
+    "Debate: Applying Dharma Today", "Community Seva Project", "Bhawna Yog — Guided Reflection",
+]
 
-CURRICULUM_SESSIONS = _seed_curriculum_sessions()
+def _seed_curriculum_weeks():
+    """Generate one independent set of weekly sessions per level, sized to that level's total_weeks."""
+    weeks = []
+    for level_id, curr in LEVEL_CURRICULA.items():
+        for wk in range(1, curr["total_weeks"] + 1):
+            topic = _SAMPLE_TOPICS[(wk - 1) % len(_SAMPLE_TOPICS)]
+            weeks.append({
+                "id": f"cw-{level_id}-{wk}",
+                "level_id": level_id,
+                "week_number": wk,
+                "title": f"Week {wk}: {topic}",
+                "content": f"Guided study for Week {wk} covering: {topic}.",
+            })
+    return weeks
+
+CURRICULUM_WEEKS = _seed_curriculum_weeks()
+
+def get_curriculum_weeks(level_id):
+    return sorted([w for w in CURRICULUM_WEEKS if w['level_id'] == level_id], key=lambda w: w['week_number'])
+
+def level_name(level_id):
+    lv = next((l for l in LEVELS if l['id'] == level_id), None)
+    return lv['name'] if lv else level_id
+
+app.jinja_env.globals['level_name'] = level_name
+app.jinja_env.globals['LEVEL_CURRICULA'] = LEVEL_CURRICULA
+app.jinja_env.globals['MIN_CURRICULUM_WEEKS'] = MIN_CURRICULUM_WEEKS
+app.jinja_env.globals['MAX_CURRICULUM_WEEKS'] = MAX_CURRICULUM_WEEKS
 
 # 2. FESTIVAL CONFIGURATION — configurable pause periods (admin-managed)
 FESTIVALS = [
@@ -223,29 +387,93 @@ FESTIVALS = [
      "notes": "Commemorates the first Ahara Daan to Lord Rishabhdev."},
 ]
 
-# 3. REGION-SPECIFIC SCHEDULE INSTANCES — each region starts the master curriculum independently
-REGION_SCHEDULES = {
-    r["id"]: {
-        "region_id": r["id"],
-        "curriculum_id": MASTER_CURRICULUM["id"],
-        "start_date": None,
-        "started_by": None,
-        "started_at": None,
-        "status": "not_started",   # not_started | active | completed
+# 3. PER-LEVEL SCHEDULE LAUNCH — two tiers:
+#    - GLOBAL_LEVEL_SCHEDULES: a Super Admin sets one default start date per level,
+#      applied everywhere a region hasn't set its own date for that level.
+#    - REGION_LEVEL_SCHEDULES: a Regional Admin can override that default for their
+#      own region + level combination independently of every other region/level.
+GLOBAL_LEVEL_SCHEDULES = {
+    level_id: {
+        "level_id": level_id, "start_date": None,
+        "started_by": None, "started_at": None, "status": "not_started",
     }
-    for r in REGIONS
+    for level_id in LEVEL_CURRICULA
 }
 
-# 4. STUDENT PROGRESS — tracked against session id, not calendar date
+REGION_LEVEL_SCHEDULES = {}
+# keyed by "<region_id>:<level_id>" -> {region_id, level_id, start_date, started_by, started_at, status}
+
+def _rl_key(region_id, level_id):
+    return f"{region_id}:{level_id}"
+
+def get_level_schedule_info(region_id, level_id):
+    """
+    Resolve the effective start date for a region + level: a region-specific
+    override always wins; otherwise fall back to the Super Admin's global default
+    for that level. Returns {start_date, source, started_at} — source is
+    'region', 'global', or None if nothing has been configured yet.
+    """
+    region_sched = REGION_LEVEL_SCHEDULES.get(_rl_key(region_id, level_id))
+    if region_sched and region_sched.get('start_date'):
+        return {"start_date": region_sched['start_date'], "source": "region", "started_at": region_sched.get('started_at')}
+    global_sched = GLOBAL_LEVEL_SCHEDULES.get(level_id)
+    if global_sched and global_sched.get('start_date'):
+        return {"start_date": global_sched['start_date'], "source": "global", "started_at": global_sched.get('started_at')}
+    return {"start_date": None, "source": None, "started_at": None}
+
+# 3b. CLASS MEETING TIMES — when a level's live class actually meets (day/time),
+#     as distinct from the weekly *study curriculum* schedule above. Same two-tier
+#     pattern: a Super Admin sets one global default per level; a Regional Admin
+#     can override the slots for their own region + level independently.
+GLOBAL_CLASS_TIMES = {
+    "beginner": {"level_id": "beginner", "slots": [
+        {"day": "Wednesday", "time": "7:00 PM",  "label": ""},
+        {"day": "Thursday",  "time": "6:30 PM",  "label": ""},
+        {"day": "Saturday",  "time": "10:00 AM", "label": ""},
+    ]},
+    "level1": {"level_id": "level1", "slots": [
+        {"day": "Thursday", "time": "7:00 PM",  "label": ""},
+        {"day": "Saturday", "time": "11:00 AM", "label": ""},
+        {"day": "Wednesday","time": "7:00 PM",  "label": "Bhawna Yog & Stuti"},
+    ]},
+    "level2": {"level_id": "level2", "slots": [
+        {"day": "Thursday", "time": "7:00 PM",  "label": ""},
+        {"day": "Saturday", "time": "11:00 AM", "label": ""},
+    ]},
+    "level3": {"level_id": "level3", "slots": [
+        {"day": "Sunday",   "time": "11:00 AM", "label": "Bhaktamar Ji"},
+        {"day": "Thursday", "time": "8:00 PM",  "label": "Chahdhala"},
+    ]},
+    "adult": {"level_id": "adult", "slots": [
+        {"day": "Sunday", "time": "8:00 PM", "label": "12+ Years — Level 1 & 2"},
+        {"day": "Monday", "time": "8:00 PM", "label": "18+ Dravya Sangrah"},
+    ]},
+}
+
+# Registrations are not currently accepted for Level 2 (it shares Level 1's
+# class time but isn't open for new enrollment yet).
+LEVEL_REGISTRATION_OPEN = {"beginner": True, "level1": True, "level2": False, "level3": True, "adult": True}
+
+REGION_CLASS_TIMES = {}
+# keyed by "<region_id>:<level_id>" -> {region_id, level_id, slots: [...]} (only present when overridden)
+
+def get_effective_class_times(region_id, level_id):
+    """Region-specific slots always win if set; otherwise fall back to the global default."""
+    key = _rl_key(region_id, level_id)
+    if key in REGION_CLASS_TIMES:
+        return REGION_CLASS_TIMES[key]['slots'], 'region'
+    return GLOBAL_CLASS_TIMES.get(level_id, {}).get('slots', []), 'global'
+
+app.jinja_env.globals['GLOBAL_CLASS_TIMES'] = GLOBAL_CLASS_TIMES
+app.jinja_env.globals['LEVEL_REGISTRATION_OPEN'] = LEVEL_REGISTRATION_OPEN
+
+# 4. STUDENT PROGRESS — tracked against week id, never against a raw calendar date
 STUDENT_PROGRESS = []
-# {id, student_id, session_id, region_id, status: 'completed', completed_at, marked_by}
+# {id, student_id, week_id, region_id, level_id, status: 'completed', completed_at, marked_by}
 
-# 5. HOMEWORK — tied to a session, assigned by a teacher
+# 5. HOMEWORK — tied to a specific curriculum week, assigned by a teacher
 HOMEWORK = []
-# {id, session_id, region_id, class_id, teacher_id, teacher_name, title, description, due_date, created_at}
-
-HOMEWORK_SUBMISSIONS = []
-# {id, homework_id, student_id, status, submitted_at, notes}
+# {id, week_id, region_id, level_id, class_id, teacher_id, teacher_name, title, description, due_date, created_at}
 
 # ── SCHEDULER HELPERS ──
 
@@ -255,68 +483,70 @@ def _parse_date(s):
 def get_region_festivals(region_id):
     return [f for f in FESTIVALS if f['pauses_schedule'] and (region_id in f['regions'] or 'global' in f['regions'])]
 
-def _festival_on_date(d, festivals):
+def _festival_overlapping_week(week_start, week_end, festivals):
     for f in festivals:
-        if _parse_date(f['start_date']) <= d <= _parse_date(f['end_date']):
+        f_start, f_end = _parse_date(f['start_date']), _parse_date(f['end_date'])
+        if week_start <= f_end and f_start <= week_end:
             return f
     return None
 
-def compute_schedule_map(region_id, max_days=250):
+def compute_week_schedule(region_id, level_id, max_weeks=80):
     """
-    Walk day-by-day from the region's start_date, assigning curriculum sessions
-    in sequence while skipping (pausing on) configured festival days for that region.
-    Festival weeks are never discarded — remaining sessions simply shift forward.
-    Returns a list of {date, session_id, session, festival} entries.
+    Walk week-by-week (7-day blocks) from the region's start_date, assigning this
+    level's curriculum weeks in sequence while pausing on any calendar week that
+    overlaps a configured festival for that region. No week is ever discarded —
+    a paused week resumes right after the festival, shifting everything after it.
+    Returns a list of {week_start, week_end, week, festival} entries.
     """
-    sched = REGION_SCHEDULES.get(region_id)
-    if not sched or not sched.get('start_date'):
+    sched = get_level_schedule_info(region_id, level_id)
+    if not sched.get('start_date'):
         return []
-    sessions = sorted(CURRICULUM_SESSIONS, key=lambda s: s['day_number'])
+    weeks = get_curriculum_weeks(level_id)
     festivals = get_region_festivals(region_id)
-    start = _parse_date(sched['start_date'])
+    cursor = _parse_date(sched['start_date'])
 
     result = []
-    session_idx = 0
-    d = start
+    week_idx = 0
     walked = 0
-    while session_idx < len(sessions) and walked < max_days:
-        fest = _festival_on_date(d, festivals)
+    while week_idx < len(weeks) and walked < max_weeks:
+        week_start = cursor
+        week_end = cursor + timedelta(days=6)
+        fest = _festival_overlapping_week(week_start, week_end, festivals)
         if fest:
-            result.append({"date": d.isoformat(), "session": None, "festival": fest})
+            result.append({"week_start": week_start.isoformat(), "week_end": week_end.isoformat(), "week": None, "festival": fest})
         else:
-            result.append({"date": d.isoformat(), "session": sessions[session_idx], "festival": None})
-            session_idx += 1
-        d += timedelta(days=1)
+            result.append({"week_start": week_start.isoformat(), "week_end": week_end.isoformat(), "week": weeks[week_idx], "festival": None})
+            week_idx += 1
+        cursor += timedelta(days=7)
         walked += 1
     return result
 
-def get_entry_for_date(region_id, target_date):
-    """Return the schedule-map entry for a specific calendar date, or None if out of range."""
-    for entry in compute_schedule_map(region_id):
-        if entry['date'] == target_date.isoformat():
-            return entry
+def get_released_weeks(region_id, level_id):
+    """All schedule entries that have started as of today (available to view/navigate)."""
+    today = date.today()
+    return [e for e in compute_week_schedule(region_id, level_id) if _parse_date(e['week_start']) <= today]
+
+def get_current_week_entry(region_id, level_id):
+    """The single entry (week or festival pause) covering today, if any."""
+    today = date.today()
+    for e in compute_week_schedule(region_id, level_id):
+        if _parse_date(e['week_start']) <= today <= _parse_date(e['week_end']):
+            return e
     return None
 
-def get_today_entry(region_id):
-    return get_entry_for_date(region_id, date.today())
+def get_completed_week_ids(student_id):
+    return {p['week_id'] for p in STUDENT_PROGRESS if p['student_id'] == student_id}
 
-def get_completed_session_ids(student_id):
-    return {p['session_id'] for p in STUDENT_PROGRESS if p['student_id'] == student_id}
-
-def get_schedule_progress_summary(region_id, student_id):
-    """Total sessions released so far (today or earlier) vs. completed by this student."""
-    schedule_map = compute_schedule_map(region_id)
-    today = date.today()
-    released = [e for e in schedule_map if e['session'] and _parse_date(e['date']) <= today]
-    completed_ids = get_completed_session_ids(student_id)
-    completed = [e for e in released if e['session']['id'] in completed_ids]
+def get_schedule_progress_summary(region_id, level_id, student_id):
+    """Curriculum weeks released so far vs. completed by this student."""
+    released = [e for e in get_released_weeks(region_id, level_id) if e['week']]
+    completed_ids = get_completed_week_ids(student_id)
+    completed = [e for e in released if e['week']['id'] in completed_ids]
     return {
         "released_count": len(released),
         "completed_count": len(completed),
-        "total_sessions": len(CURRICULUM_SESSIONS),
+        "total_weeks": LEVEL_CURRICULA[level_id]['total_weeks'],
     }
-
-app.jinja_env.globals['MASTER_CURRICULUM'] = MASTER_CURRICULUM
 
 # ─────────────────────────────────────────
 #  AUTH HELPERS
@@ -437,8 +667,9 @@ app.jinja_env.globals['is_fully_verified'] = is_fully_verified
 def find_teacher_for_class(class_id, class_day=None):
     """
     Return the best-matching teacher for a class_id (level+region).
-    Prefers a teacher who also teaches on the requested class_day;
-    falls back to any teacher already assigned to that class_id.
+    Prefers a teacher who also teaches on the requested class_day (if any
+    teacher record carries one); falls back to any teacher already
+    assigned to that class_id.
     """
     candidates = [u for u in USERS.values() if u['role'] == 'teacher' and u.get('class_id') == class_id]
     if not candidates:
@@ -482,6 +713,135 @@ app.jinja_env.globals['get_admin_active_region'] = get_admin_active_region
 app.jinja_env.globals['LEVELS'] = LEVELS
 
 # ─────────────────────────────────────────
+#  PERSISTENCE  (real SQLite database — survives restarts/deploys)
+#
+#  Every mutable data store above (USERS, STUDENTS, EVENTS, ...) stays a
+#  plain dict/list exactly as the rest of the app expects — nothing else
+#  in the codebase needs to change. Each store gets its own real SQLite
+#  table (users, students, events, ...) with columns derived from the
+#  actual fields your data uses, so the schema can never silently drop a
+#  field. At startup we hydrate these same in-memory objects from the
+#  database (via .clear()/.update()/.extend(), so every existing
+#  reference — including the Jinja globals registered above — sees the
+#  restored data automatically). After every request that changes data,
+#  the current state is written back to the database.
+#
+#  You can inspect the resulting database directly with any SQLite
+#  client, e.g.:  sqlite3 data/gjpp.db ".tables"  or  "SELECT * FROM students;"
+# ─────────────────────────────────────────
+import sqlite3
+
+DATA_DIR = os.environ.get('GJPP_DATA_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, 'gjpp.db')
+
+# table name -> (the actual module-level store, 'dict' or 'list', primary-key field)
+_TABLE_SPECS = {
+    'users':                  (USERS, 'dict', 'id'),
+    'students':                (STUDENTS, 'list', 'id'),
+    'events':                  (EVENTS, 'list', 'id'),
+    'location_requests':       (LOCATION_REQUESTS, 'list', 'id'),
+    'study_materials':         (STUDY_MATERIALS, 'list', 'id'),
+    'promotions':               (PROMOTIONS, 'list', 'id'),
+    'activity_videos':         (ACTIVITY_VIDEOS, 'list', 'id'),
+    'video_requests':          (VIDEO_REQUESTS, 'list', 'id'),
+    'volunteers':               (VOLUNTEERS, 'list', 'id'),
+    'festivals':                (FESTIVALS, 'list', 'id'),
+    'level_curricula':         (LEVEL_CURRICULA, 'dict', 'level_id'),
+    'curriculum_weeks':        (CURRICULUM_WEEKS, 'list', 'id'),
+    'global_level_schedules':  (GLOBAL_LEVEL_SCHEDULES, 'dict', 'level_id'),
+    'region_level_schedules':  (REGION_LEVEL_SCHEDULES, 'dict', None),  # keyed by "region_id:level_id"
+    'global_class_times':      (GLOBAL_CLASS_TIMES, 'dict', 'level_id'),
+    'region_class_times':      (REGION_CLASS_TIMES, 'dict', None),  # keyed by "region_id:level_id"
+    'student_progress':        (STUDENT_PROGRESS, 'list', 'id'),
+    'homework':                 (HOMEWORK, 'list', 'id'),
+}
+
+def get_db_connection():
+    return sqlite3.connect(DB_PATH)
+
+def _records_of(store, kind):
+    return list(store.values()) if kind == 'dict' else list(store)
+
+def _table_exists(conn, table):
+    cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+    return cur.fetchone() is not None
+
+def _save_table(conn, table, store, kind):
+    records = _records_of(store, kind)
+    # Column set is derived from the data itself (union of every key seen) so a field
+    # can never be silently dropped just because it wasn't hand-listed in a schema.
+    columns = sorted({k for rec in records for k in rec.keys()}) or ['id']
+    conn.execute(f'DROP TABLE IF EXISTS "{table}"')
+    col_defs = ', '.join(f'"{c}" TEXT' for c in columns)
+    conn.execute(f'CREATE TABLE "{table}" ({col_defs})')
+    if records:
+        col_names = ', '.join(f'"{c}"' for c in columns)
+        placeholders = ', '.join('?' for _ in columns)
+        rows = [tuple(json.dumps(rec.get(c)) for c in columns) for rec in records]
+        conn.executemany(f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders})', rows)
+
+def _load_table(conn, table):
+    cur = conn.execute(f'PRAGMA table_info("{table}")')
+    columns = [row[1] for row in cur.fetchall()]
+    if not columns:
+        return []
+    col_list = ', '.join(f'"{c}"' for c in columns)
+    cur = conn.execute(f'SELECT {col_list} FROM "{table}"')
+    records = []
+    for row in cur.fetchall():
+        records.append({c: (json.loads(v) if v is not None else None) for c, v in zip(columns, row)})
+    return records
+
+def save_data():
+    """Write the current in-memory state of every store to the SQLite database."""
+    try:
+        conn = get_db_connection()
+        with conn:
+            for table, (store, kind, pk) in _TABLE_SPECS.items():
+                _save_table(conn, table, store, kind)
+        conn.close()
+    except Exception as e:
+        logging.error(f"Failed to save data to SQLite database ({DB_PATH}): {e}")
+
+def load_data():
+    """Restore all persisted stores from the SQLite database in place, if it exists yet."""
+    conn = get_db_connection()
+    found_existing = False
+    for table, (store, kind, pk) in _TABLE_SPECS.items():
+        if not _table_exists(conn, table):
+            continue
+        found_existing = True
+        records = _load_table(conn, table)
+        if not records:
+            continue
+        if kind == 'dict':
+            store.clear()
+            if table == 'region_level_schedules' or table == 'region_class_times':
+                for rec in records:
+                    store[f"{rec.get('region_id')}:{rec.get('level_id')}"] = rec
+            else:
+                for rec in records:
+                    store[rec[pk]] = rec
+        else:
+            store.clear()
+            store.extend(records)
+    conn.close()
+    if found_existing:
+        logging.info(f"Loaded persisted data from SQLite database at {DB_PATH}.")
+    else:
+        logging.info(f"No existing database at {DB_PATH} — creating it and seeding with initial demo data.")
+    save_data()  # persist whatever is now in memory (restored data, or fresh seed data on first run)
+
+load_data()
+
+@app.after_request
+def _persist_after_mutating_request(response):
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        save_data()
+    return response
+
+# ─────────────────────────────────────────
 #  ADMIN REGION SWITCH
 # ─────────────────────────────────────────
 @app.route('/admin/switch-region/<region_id>', methods=['POST'])
@@ -522,7 +882,36 @@ def region_dashboard(region_id):
 
 @app.route('/classes')
 def classes():
-    return render_template('classes.html', levels=LEVELS, regions=REGIONS, user=current_user())
+    u = current_user()
+    all_schedules = [
+        {"level": "Beginner",     "icon": "🌱", "anchor": "beginner", "color": "#f59e0b", "region": "north_america", "day": "Sunday",  "time": "10:00 AM EST",  "format": "Online"},
+        {"level": "Level 1",      "icon": "🌿", "anchor": "level1",   "color": "#10b981", "region": "north_america", "day": "Sunday",  "time": "11:00 AM EST",  "format": "Online"},
+        {"level": "Level 2",      "icon": "🌳", "anchor": "level2",   "color": "#3b82f6", "region": "north_america", "day": "Sunday",  "time": "12:00 PM EST",  "format": "Online"},
+        {"level": "Level 3+",     "icon": "🏔️", "anchor": "level3",   "color": "#8b5cf6", "region": "north_america", "day": "Saturday","time": "9:00 AM EST",   "format": "Online"},
+        {"level": "Beginner",     "icon": "🌱", "anchor": "beginner", "color": "#f59e0b", "region": "uk",            "day": "Sunday",  "time": "10:00 AM GMT",  "format": "Online + In-person"},
+        {"level": "Level 1",      "icon": "🌿", "anchor": "level1",   "color": "#10b981", "region": "uk",            "day": "Sunday",  "time": "11:30 AM GMT",  "format": "Online"},
+        {"level": "Level 2",      "icon": "🌳", "anchor": "level2",   "color": "#3b82f6", "region": "europe",        "day": "Saturday","time": "10:00 AM CET",  "format": "Online"},
+        {"level": "Beginner",     "icon": "🌱", "anchor": "beginner", "color": "#f59e0b", "region": "india",         "day": "Sunday",  "time": "9:00 AM IST",   "format": "In-person + Online"},
+        {"level": "Adult Track",  "icon": "🕉️", "anchor": "adult",    "color": "#ec4899", "region": "india",         "day": "Sunday",  "time": "7:00 AM IST",   "format": "Online"},
+        {"level": "Beginner",     "icon": "🌱", "anchor": "beginner", "color": "#f59e0b", "region": "australia",     "day": "Sunday",  "time": "10:00 AM AEST", "format": "Online"},
+        {"level": "Level 1",      "icon": "🌿", "anchor": "level1",   "color": "#10b981", "region": "australia",     "day": "Sunday",  "time": "11:00 AM AEST", "format": "Online"},
+    ]
+    # Logged-in users (other than the super admin, who browses every region) only see
+    # — and can only enroll into — their own region's class schedule.
+    if u and u['role'] != 'admin':
+        schedules = [s for s in all_schedules if s['region'] == u.get('region', '')]
+    else:
+        schedules = all_schedules
+
+    # Group into region sections (in REGIONS' canonical order) for a card-based layout
+    region_groups = []
+    for r in REGIONS:
+        matched = [s for s in schedules if s['region'] == r['id']]
+        if matched:
+            region_groups.append({"region": r, "classes": matched})
+
+    return render_template('classes.html', levels=LEVELS, regions=REGIONS, user=u,
+        schedules=schedules, region_groups=region_groups)
 
 @app.route('/events')
 def events_page():
@@ -548,13 +937,34 @@ def register_event(event_id):
 
 @app.route('/register/student', methods=['GET', 'POST'])
 def register_student():
+    u = current_user()
     if request.method == 'POST':
         parent_email = request.form.get('parent1_email', '').strip().lower()
         password     = request.form.get('password', '')
         confirm      = request.form.get('confirm_password', '')
         level        = request.form.get('level')
         region       = request.form.get('region')
-        class_day    = request.form.get('class_day', '')
+        # Logged-in users (other than the super admin) can only enroll into their
+        # own account's region — the submitted value is never trusted for this.
+        if u and u['role'] != 'admin':
+            region = u.get('region')
+
+        # Level 2 is not currently open for new registrations — never trust the client.
+        if not LEVEL_REGISTRATION_OPEN.get(level, True):
+            flash('Registration for that level is not currently open. Please choose a different level.', 'error')
+            return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
+
+        # The class day/time slot the parent picked, matched against what's actually
+        # scheduled for this level+region — never trust a slot that wasn't offered.
+        valid_slots, _slot_source = get_effective_class_times(region, level)
+        chosen_day   = request.form.get('class_day', '')
+        chosen_time  = request.form.get('class_time', '')
+        chosen_label = request.form.get('class_label', '')
+        slot_is_valid = any(s['day'] == chosen_day and s['time'] == chosen_time and s.get('label','') == chosen_label
+                             for s in valid_slots)
+        if valid_slots and not slot_is_valid:
+            flash('Please select one of the available class times for this level.', 'error')
+            return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
 
         existing_account = next((u for u in USERS.values() if u['email'].lower() == parent_email), None)
 
@@ -562,10 +972,10 @@ def register_student():
         if not existing_account:
             if not password or len(password) < 6:
                 flash('Please set a password (min 6 characters) so you can log in and see updates about your child.', 'error')
-                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, class_days=CLASS_DAYS, user=current_user())
+                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
             if password != confirm:
                 flash('Passwords do not match. Please try again.', 'error')
-                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, class_days=CLASS_DAYS, user=current_user())
+                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
 
         class_id = f"class-{level}-{region}"
         student = {
@@ -578,7 +988,11 @@ def register_student():
             "region": region,
             "country": request.form.get('country'),
             "city": request.form.get('city'),
-            "class_day": class_day,
+            "address": request.form.get('address', ''),
+            "postal_code": request.form.get('postal_code', ''),
+            "class_day": chosen_day,
+            "class_time": chosen_time,
+            "class_label": chosen_label,
             "parent1_name": request.form.get('parent1_name'),
             "parent1_whatsapp": request.form.get('parent1_whatsapp'),
             "parent1_email": parent_email,
@@ -589,8 +1003,9 @@ def register_student():
         }
         STUDENTS.append(student)
 
-        # Auto-assign a teacher based on the chosen level + region, preferring a class-day match
-        assigned_teacher = find_teacher_for_class(class_id, class_day)
+        # Auto-assign a teacher based on the chosen level + region, preferring one
+        # who actually teaches the specific day the parent picked.
+        assigned_teacher = find_teacher_for_class(class_id, class_day=chosen_day)
 
         # Create (or reuse) the parent's account so they can log in for future updates
         if existing_account:
@@ -601,7 +1016,7 @@ def register_student():
                 "id": f"u-parent-{str(uuid.uuid4())[:8]}",
                 "role": "parent",
                 "email": parent_email,
-                "password": password,
+                "password": generate_password_hash(password),
                 "name": request.form.get('parent1_name'),
                 "phone": request.form.get('parent1_whatsapp', ''),
                 "region": region,
@@ -611,6 +1026,7 @@ def register_student():
                 "email_verified": False,
                 "phone_verified": False,
                 "verification_code": generate_verification_code(),
+                "reset_token": None,
             }
             USERS[parent_user['id']] = parent_user
             account_created = True
@@ -621,17 +1037,24 @@ def register_student():
 
         if account_created:
             flash(f"Welcome, {student['name']}! Your GJPP parent account was created — check your email to verify it. 🙏", 'success')
+            send_email(parent_user['email'], "Verify your GJPP account",
+                f"Welcome to GJPP, {parent_user['name']}!\n\nYour verification code is: {parent_user['verification_code']}\n\n"
+                f"Enter this code at {request.url_root.rstrip('/')}/verify/email to verify your account.")
         else:
             flash(f"Welcome, {student['name']}! Your child has been added to your existing GJPP account. 🙏", 'success')
 
         if assigned_teacher:
-            day_note = f" on {assigned_teacher.get('class_day')}" if assigned_teacher.get('class_day') else ""
-            flash(f"{student['name']} has been automatically assigned to teacher {assigned_teacher['name']}{day_note}.", 'success')
+            flash(f"{student['name']} has been automatically assigned to teacher {assigned_teacher['name']}.", 'success')
         else:
             flash(f"{student['name']} is enrolled — a teacher will be assigned to this class shortly.", 'success')
 
+        send_whatsapp(student['parent1_whatsapp'],
+            f"🙏 Jai Jinendra {student['parent1_name']}! {student['name']} is enrolled in GJPP "
+            f"({level_name(level)} level)."
+            + (f" Assigned teacher: {assigned_teacher['name']}." if assigned_teacher else ""))
+
         return redirect(url_for('registration_success', type='student'))
-    return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, class_days=CLASS_DAYS, user=current_user())
+    return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
 
 @app.route('/register/volunteer', methods=['GET', 'POST'])
 def register_volunteer():
@@ -683,18 +1106,16 @@ def registration_success(type):
 def login():
     if current_user():
         return redirect(url_for('dashboard'))
-    role = request.args.get('role', 'admin')
-    return render_template('login.html', role=role)
+    return render_template('login.html')
 
-@app.route('/login/<role>', methods=['POST'])
-def login_submit(role):
+@app.route('/login', methods=['POST'])
+def login_submit():
     email    = request.form.get('email', '').strip().lower()
     password = request.form.get('password', '')
-    # Accept regional_admin via 'admin' role tab too
-    search_roles = [role]
-    if role == 'admin':
-        search_roles = ['admin', 'regional_admin']
-    user = next((u for u in USERS.values() if u['email'].lower() == email and u['role'] in search_roles and u['password'] == password), None)
+    # Generic login: match on credentials alone — the user's stored profile
+    # (their role) determines what they see next, not a tab they had to pick.
+    user = next((u for u in USERS.values() if u['email'].lower() == email
+                 and check_password_hash(u['password'], password)), None)
     if user:
         session['user_id']   = user['id']
         session['user_role'] = user['role']
@@ -704,7 +1125,7 @@ def login_submit(role):
             return redirect(next_url)
         return redirect(url_for('dashboard'))
     flash('Invalid email or password. Please try again.', 'error')
-    return redirect(url_for('login') + f'?role={role}')
+    return redirect(url_for('login'))
 
 @app.route('/logout')
 def logout():
@@ -752,10 +1173,14 @@ def profile():
         if email_changed:
             u['email_verified'] = False
             u['verification_code'] = generate_verification_code()
+            send_email(u['email'], "Verify your new GJPP email",
+                f"Hi {u['name']},\n\nYour verification code is: {u['verification_code']}\n\n"
+                f"Enter it at {request.url_root.rstrip('/')}/verify/email to confirm this email address.")
             flash('Email updated — please verify your new email address.', 'success')
         if phone_changed:
             u['phone_verified'] = False
             u['verification_code'] = generate_verification_code()
+            send_whatsapp(u['phone'], f"Your GJPP phone verification code is: {u['verification_code']}")
             flash('Phone number updated — please verify it.', 'success')
         if not email_changed and not phone_changed:
             flash('Profile updated successfully! ✅', 'success')
@@ -786,16 +1211,56 @@ def verify_resend(channel):
         abort(404)
     u = current_user()
     u['verification_code'] = generate_verification_code()
-    dest = u['email'] if channel == 'email' else u.get('phone', 'your phone')
-    flash(f"A new verification code was sent to {dest}. (Demo code: {u['verification_code']})", 'success')
+    if channel == 'email':
+        sent = send_email(u['email'], "Your GJPP verification code",
+            f"Your verification code is: {u['verification_code']}")
+        dest = u['email']
+    else:
+        sent = send_whatsapp(u.get('phone'), f"Your GJPP verification code is: {u['verification_code']}")
+        dest = u.get('phone', 'your phone')
+    if sent:
+        flash(f"A new verification code was sent to {dest}.", 'success')
+    else:
+        flash(f"Couldn't deliver a code to {dest} right now — please try again shortly or contact support.", 'error')
     return redirect(url_for('verify_channel', channel=channel))
 
-@app.route('/forgot-password', methods=['GET','POST'])
+@app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        flash('If that email exists, a reset link has been sent.', 'success')
+        email = request.form.get('email', '').strip().lower()
+        user = next((u for u in USERS.values() if u['email'].lower() == email), None)
+        if user:
+            token = uuid.uuid4().hex
+            user['reset_token'] = token
+            reset_link = f"{request.url_root.rstrip('/')}/reset-password/{token}"
+            send_email(user['email'], "Reset your GJPP password",
+                f"Hi {user['name']},\n\nClick the link below to reset your password:\n{reset_link}\n\n"
+                f"If you didn't request this, you can safely ignore this email.")
+        # Always show the same message whether or not the account exists, to avoid leaking which emails are registered
+        flash('If that email exists, a password reset link has been sent.', 'success')
         return redirect(url_for('login'))
     return render_template('forgot_password.html', user=current_user())
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    user = next((u for u in USERS.values() if u.get('reset_token') and u['reset_token'] == token), None)
+    if not user:
+        flash('That reset link is invalid or has expired. Please request a new one.', 'error')
+        return redirect(url_for('forgot_password'))
+    if request.method == 'POST':
+        new_password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+        if not new_password or len(new_password) < 6:
+            flash('Password must be at least 6 characters.', 'error')
+            return render_template('reset_password.html', token=token, user=current_user())
+        if new_password != confirm:
+            flash('Passwords do not match.', 'error')
+            return render_template('reset_password.html', token=token, user=current_user())
+        user['password'] = generate_password_hash(new_password)
+        user['reset_token'] = None
+        flash('Your password has been reset. Please log in with your new password.', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', token=token, user=current_user())
 
 # ─────────────────────────────────────────
 #  DASHBOARD (role-based redirect)
@@ -1078,7 +1543,7 @@ def admin_teacher_new():
         USERS[uid] = {
             "id": uid, "role": "teacher",
             "email": email,
-            "password": request.form.get('password', 'teacher123'),
+            "password": generate_password_hash(request.form.get('password', 'teacher123')),
             "name": request.form.get('name'),
             "region": request.form.get('region'),
             "country": request.form.get('country'),
@@ -1086,8 +1551,13 @@ def admin_teacher_new():
             "class_id": request.form.get('class_id') or None,
             "phone": request.form.get('phone',''),
             "created_at": datetime.now().strftime('%Y-%m-%d'),
+            "email_verified": False, "phone_verified": False,
+            "verification_code": generate_verification_code(), "reset_token": None,
         }
         flash(f"Teacher '{request.form.get('name')}' added successfully! 🎓", 'success')
+        send_email(email, "Your GJPP teacher account",
+            f"Hi {request.form.get('name')},\n\nYour GJPP teacher account has been created.\n"
+            f"Login email: {email}\nLog in at {request.url_root.rstrip('/')}/login to get started.")
         return redirect(url_for('admin_teachers'))
     return render_template('admin/teacher_form.html',
         user=current_user(), teacher=None, regions=REGIONS, levels=LEVELS, action='new')
@@ -1109,7 +1579,7 @@ def admin_teacher_edit(uid):
         teacher['class_id'] = request.form.get('class_id') or None
         teacher['phone']    = request.form.get('phone','')
         if request.form.get('password'):
-            teacher['password'] = request.form.get('password')
+            teacher['password'] = generate_password_hash(request.form.get('password'))
         flash(f"Teacher '{teacher['name']}' updated successfully! ✅", 'success')
         return redirect(url_for('admin_teachers'))
     return render_template('admin/teacher_form.html',
@@ -1125,6 +1595,270 @@ def admin_teacher_delete(uid):
         del USERS[uid]
         flash(f"Teacher '{name}' removed from the system.", 'success')
     return redirect(url_for('admin_teachers'))
+
+# ─────────────────────────────────────────
+#  ADMIN — PARENTS
+# ─────────────────────────────────────────
+@app.route('/admin/parents')
+@login_required
+@role_required('admin')
+def admin_parents():
+    parents = [u for u in USERS.values() if u['role'] == 'parent']
+    q_name  = request.args.get('name', '').lower()
+    q_email = request.args.get('email', '').lower()
+    if q_name:  parents = [p for p in parents if q_name in p['name'].lower()]
+    if q_email: parents = [p for p in parents if q_email in p['email'].lower()]
+    child_counts = {}
+    for p in parents:
+        child_counts[p['id']] = len([s for s in STUDENTS if s.get('parent1_email','').lower() == p['email'].lower()])
+    return render_template('admin/parents.html',
+        user=current_user(), parents=parents, regions=REGIONS, child_counts=child_counts,
+        q_name=q_name, q_email=q_email,
+    )
+
+@app.route('/admin/parents/new', methods=['GET','POST'])
+@login_required
+@role_required('admin')
+def admin_parent_new():
+    if request.method == 'POST':
+        email = request.form.get('email','').strip().lower()
+        if any(u['email'].lower() == email for u in USERS.values()):
+            flash('A user with that email already exists.', 'error')
+            return redirect(url_for('admin_parent_new'))
+        password = request.form.get('password','').strip()
+        if not password:
+            password = uuid.uuid4().hex[:10]  # admin didn't set one — generate a temporary one
+        uid = f"u-parent-{str(uuid.uuid4())[:8]}"
+        name = request.form.get('name')
+        USERS[uid] = {
+            "id": uid, "role": "parent",
+            "email": email,
+            "password": generate_password_hash(password),
+            "name": name,
+            "region": request.form.get('region'),
+            "country": request.form.get('country'),
+            "city": request.form.get('city'),
+            "class_id": None,
+            "phone": request.form.get('phone',''),
+            "created_at": datetime.now().strftime('%Y-%m-%d'),
+            "email_verified": False, "phone_verified": False,
+            "verification_code": generate_verification_code(), "reset_token": None,
+        }
+        flash(f"Parent account '{name}' created successfully! 👨‍👩‍👦", 'success')
+        send_email(email, "Your GJPP parent account",
+            f"Hi {name},\n\nA GJPP account has been created for you.\n\n"
+            f"Login email: {email}\nTemporary password: {password}\n\n"
+            f"Log in at {request.url_root.rstrip('/')}/login and update your password from your profile page.")
+        return redirect(url_for('admin_parents'))
+    return render_template('admin/parent_form.html',
+        user=current_user(), parent=None, regions=REGIONS, action='new')
+
+@app.route('/admin/parents/<uid>/edit', methods=['GET','POST'])
+@login_required
+@role_required('admin')
+def admin_parent_edit(uid):
+    parent = USERS.get(uid)
+    if not parent or parent['role'] != 'parent':
+        flash('Parent not found.', 'error')
+        return redirect(url_for('admin_parents'))
+    if request.method == 'POST':
+        old_email = parent['email']
+        parent['name']    = request.form.get('name')
+        parent['email']   = request.form.get('email','').strip().lower()
+        parent['region']  = request.form.get('region')
+        parent['country'] = request.form.get('country')
+        parent['city']    = request.form.get('city')
+        parent['phone']   = request.form.get('phone','')
+        if request.form.get('password'):
+            parent['password'] = generate_password_hash(request.form.get('password'))
+        # Keep the parent's children pointed at their (possibly new) login email
+        if parent['email'] != old_email:
+            for s in STUDENTS:
+                if s.get('parent1_email','').lower() == old_email.lower():
+                    s['parent1_email'] = parent['email']
+        flash(f"Parent account '{parent['name']}' updated successfully! ✅", 'success')
+        return redirect(url_for('admin_parents'))
+    my_children = [s for s in STUDENTS if s.get('parent1_email','').lower() == parent['email'].lower()]
+    return render_template('admin/parent_form.html',
+        user=current_user(), parent=parent, regions=REGIONS, action='edit', my_children=my_children)
+
+@app.route('/admin/parents/<uid>/delete', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_parent_delete(uid):
+    parent = USERS.get(uid)
+    if parent and parent['role'] == 'parent':
+        name = parent['name']
+        del USERS[uid]
+        flash(f"Parent account '{name}' removed. Their children's records were kept — only the login was deleted.", 'success')
+    return redirect(url_for('admin_parents'))
+
+# ─────────────────────────────────────────
+#  ADMIN — REGIONAL ADMINS
+# ─────────────────────────────────────────
+@app.route('/admin/regional-admins')
+@login_required
+@role_required('admin')
+def admin_regional_admins():
+    radmins = [u for u in USERS.values() if u['role'] == 'regional_admin']
+    return render_template('admin/regional_admins.html',
+        user=current_user(), radmins=radmins, regions=REGIONS)
+
+@app.route('/admin/regional-admins/new', methods=['GET','POST'])
+@login_required
+@role_required('admin')
+def admin_regional_admin_new():
+    if request.method == 'POST':
+        email = request.form.get('email','').strip().lower()
+        if any(u['email'].lower() == email for u in USERS.values()):
+            flash('A user with that email already exists.', 'error')
+            return redirect(url_for('admin_regional_admin_new'))
+        password = request.form.get('password','').strip()
+        if not password:
+            flash('Please set a password for this account.', 'error')
+            return redirect(url_for('admin_regional_admin_new'))
+        uid = f"u-radmin-{str(uuid.uuid4())[:8]}"
+        name = request.form.get('name')
+        USERS[uid] = {
+            "id": uid, "role": "regional_admin",
+            "email": email,
+            "password": generate_password_hash(password),
+            "name": name,
+            "region": request.form.get('region'),
+            "country": request.form.get('country'),
+            "city": request.form.get('city'),
+            "class_id": None,
+            "phone": request.form.get('phone',''),
+            "created_at": datetime.now().strftime('%Y-%m-%d'),
+            "email_verified": False, "phone_verified": False,
+            "verification_code": generate_verification_code(), "reset_token": None,
+        }
+        flash(f"Regional Admin '{name}' added successfully for {region_label(request.form.get('region'))}! 🛡️", 'success')
+        send_email(email, "Your GJPP Regional Admin account",
+            f"Hi {name},\n\nYou've been made a Regional Admin for {region_label(request.form.get('region'))} on GJPP.\n\n"
+            f"Login email: {email}\nLog in at {request.url_root.rstrip('/')}/login to get started.")
+        return redirect(url_for('admin_regional_admins'))
+    return render_template('admin/regional_admin_form.html',
+        user=current_user(), radmin=None, regions=REGIONS, action='new')
+
+@app.route('/admin/regional-admins/<uid>/edit', methods=['GET','POST'])
+@login_required
+@role_required('admin')
+def admin_regional_admin_edit(uid):
+    radmin = USERS.get(uid)
+    if not radmin or radmin['role'] != 'regional_admin':
+        flash('Regional Admin not found.', 'error')
+        return redirect(url_for('admin_regional_admins'))
+    if request.method == 'POST':
+        radmin['name']    = request.form.get('name')
+        radmin['email']   = request.form.get('email','').strip().lower()
+        radmin['region']  = request.form.get('region')
+        radmin['country'] = request.form.get('country')
+        radmin['city']    = request.form.get('city')
+        radmin['phone']   = request.form.get('phone','')
+        if request.form.get('password'):
+            radmin['password'] = generate_password_hash(request.form.get('password'))
+        flash(f"Regional Admin '{radmin['name']}' updated successfully! ✅", 'success')
+        return redirect(url_for('admin_regional_admins'))
+    return render_template('admin/regional_admin_form.html',
+        user=current_user(), radmin=radmin, regions=REGIONS, action='edit')
+
+@app.route('/admin/regional-admins/<uid>/delete', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_regional_admin_delete(uid):
+    radmin = USERS.get(uid)
+    if radmin and radmin['role'] == 'regional_admin':
+        name = radmin['name']
+        del USERS[uid]
+        flash(f"Regional Admin '{name}' removed from the system.", 'success')
+    return redirect(url_for('admin_regional_admins'))
+
+# ─────────────────────────────────────────
+#  ADMIN — SUPER ADMINS
+# ─────────────────────────────────────────
+@app.route('/admin/admins')
+@login_required
+@role_required('admin')
+def admin_admins():
+    admins = [u for u in USERS.values() if u['role'] == 'admin']
+    return render_template('admin/admins.html', user=current_user(), admins=admins)
+
+@app.route('/admin/admins/new', methods=['GET','POST'])
+@login_required
+@role_required('admin')
+def admin_admin_new():
+    if request.method == 'POST':
+        email = request.form.get('email','').strip().lower()
+        if any(u['email'].lower() == email for u in USERS.values()):
+            flash('A user with that email already exists.', 'error')
+            return redirect(url_for('admin_admin_new'))
+        password = request.form.get('password','').strip()
+        if not password:
+            flash('Please set a password for this account.', 'error')
+            return redirect(url_for('admin_admin_new'))
+        uid = f"u-admin-{str(uuid.uuid4())[:8]}"
+        name = request.form.get('name')
+        USERS[uid] = {
+            "id": uid, "role": "admin",
+            "email": email,
+            "password": generate_password_hash(password),
+            "name": name,
+            "region": request.form.get('region') or REGIONS[0]['id'],
+            "country": request.form.get('country',''),
+            "city": request.form.get('city',''),
+            "class_id": None,
+            "phone": request.form.get('phone',''),
+            "created_at": datetime.now().strftime('%Y-%m-%d'),
+            "email_verified": False, "phone_verified": False,
+            "verification_code": generate_verification_code(), "reset_token": None,
+        }
+        flash(f"Super Admin '{name}' added successfully! 👑", 'success')
+        send_email(email, "Your GJPP Super Admin account",
+            f"Hi {name},\n\nYou've been granted Super Admin access on GJPP — full platform access across every region.\n\n"
+            f"Login email: {email}\nLog in at {request.url_root.rstrip('/')}/login to get started.")
+        return redirect(url_for('admin_admins'))
+    return render_template('admin/admin_form.html',
+        user=current_user(), admin_acct=None, regions=REGIONS, action='new')
+
+@app.route('/admin/admins/<uid>/edit', methods=['GET','POST'])
+@login_required
+@role_required('admin')
+def admin_admin_edit(uid):
+    admin_acct = USERS.get(uid)
+    if not admin_acct or admin_acct['role'] != 'admin':
+        flash('Admin not found.', 'error')
+        return redirect(url_for('admin_admins'))
+    if request.method == 'POST':
+        admin_acct['name']    = request.form.get('name')
+        admin_acct['email']   = request.form.get('email','').strip().lower()
+        admin_acct['phone']   = request.form.get('phone','')
+        if request.form.get('password'):
+            admin_acct['password'] = generate_password_hash(request.form.get('password'))
+        flash(f"Admin '{admin_acct['name']}' updated successfully! ✅", 'success')
+        return redirect(url_for('admin_admins'))
+    return render_template('admin/admin_form.html',
+        user=current_user(), admin_acct=admin_acct, regions=REGIONS, action='edit')
+
+@app.route('/admin/admins/<uid>/delete', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_admin_delete(uid):
+    u = current_user()
+    target = USERS.get(uid)
+    if not target or target['role'] != 'admin':
+        return redirect(url_for('admin_admins'))
+    if uid == u['id']:
+        flash('You cannot remove your own Super Admin account while logged in as it.', 'error')
+        return redirect(url_for('admin_admins'))
+    remaining_admins = [x for x in USERS.values() if x['role'] == 'admin']
+    if len(remaining_admins) <= 1:
+        flash('Cannot remove the last remaining Super Admin account.', 'error')
+        return redirect(url_for('admin_admins'))
+    name = target['name']
+    del USERS[uid]
+    flash(f"Super Admin '{name}' removed from the system.", 'success')
+    return redirect(url_for('admin_admins'))
 
 # ─────────────────────────────────────────
 #  ADMIN — VOLUNTEERS
@@ -1226,6 +1960,31 @@ def admin_volunteer_delete(vid):
 def admin_student_new():
     if request.method == 'POST':
         class_id = f"class-{request.form.get('level')}-{request.form.get('region')}"
+        parent_email = request.form.get('parent1_email','').strip().lower()
+
+        # Auto-create (or link to) a parent login, same as public self-enrollment does —
+        # otherwise a student added here would have a parent with no way to sign in.
+        existing_account = next((u for u in USERS.values() if u['email'].lower() == parent_email), None)
+        account_created = False
+        generated_password = None
+        if parent_email and not existing_account:
+            generated_password = uuid.uuid4().hex[:10]
+            parent_uid = f"u-parent-{str(uuid.uuid4())[:8]}"
+            USERS[parent_uid] = {
+                "id": parent_uid, "role": "parent",
+                "email": parent_email,
+                "password": generate_password_hash(generated_password),
+                "name": request.form.get('parent1_name'),
+                "phone": request.form.get('parent1_whatsapp', ''),
+                "region": request.form.get('region'),
+                "country": request.form.get('country'),
+                "city": request.form.get('city'),
+                "class_id": None,
+                "email_verified": False, "phone_verified": False,
+                "verification_code": generate_verification_code(), "reset_token": None,
+            }
+            account_created = True
+
         student = {
             "id": f"s-{str(uuid.uuid4())[:8]}",
             "name":           request.form.get('name'),
@@ -1236,8 +1995,10 @@ def admin_student_new():
             "region":         request.form.get('region'),
             "country":        request.form.get('country'),
             "city":           request.form.get('city'),
+            "address":        request.form.get('address', ''),
+            "postal_code":    request.form.get('postal_code', ''),
             "parent1_name":   request.form.get('parent1_name'),
-            "parent1_email":  request.form.get('parent1_email','').strip().lower(),
+            "parent1_email":  parent_email,
             "parent1_whatsapp": request.form.get('parent1_whatsapp'),
             "parent2_name":   request.form.get('parent2_name',''),
             "parent2_whatsapp": request.form.get('parent2_whatsapp',''),
@@ -1248,6 +2009,13 @@ def admin_student_new():
         assigned_teacher = find_teacher_for_class(class_id)
         flash(f"Student '{student['name']}' added successfully! 🎓" +
               (f" Auto-assigned to {assigned_teacher['name']}." if assigned_teacher else " No teacher assigned to this class yet."), 'success')
+        if account_created:
+            flash(f"A new parent login was also created for {parent_email} — a temporary password was emailed to them.", 'success')
+            send_email(parent_email, "Your GJPP parent account",
+                f"Hi {student['parent1_name']},\n\nA GJPP parent account has been created for you so you can see "
+                f"{student['name']}'s classes, materials, and updates.\n\n"
+                f"Login email: {parent_email}\nTemporary password: {generated_password}\n\n"
+                f"Log in at {request.url_root.rstrip('/')}/login and update your password from your profile page.")
         return redirect(url_for('admin_students'))
     return render_template('admin/student_form.html',
         user=current_user(), student=None, regions=REGIONS, levels=LEVELS, countries=COUNTRIES, action='new')
@@ -1269,6 +2037,8 @@ def admin_student_edit(sid):
         student['region']           = request.form.get('region')
         student['country']          = request.form.get('country')
         student['city']             = request.form.get('city')
+        student['address']          = request.form.get('address', '')
+        student['postal_code']      = request.form.get('postal_code', '')
         student['parent1_name']     = request.form.get('parent1_name')
         student['parent1_email']    = request.form.get('parent1_email','').strip().lower()
         student['parent1_whatsapp'] = request.form.get('parent1_whatsapp')
@@ -1427,15 +2197,30 @@ def materials_upload():
         # Regional admin can only upload for their own region or global
         if u['role'] == 'regional_admin':
             region = u['region']
+
+        uploaded_file = request.files.get('file')
+        stored_name, size_bytes, error = save_uploaded_file(
+            uploaded_file, MATERIALS_UPLOAD_DIR, ALLOWED_MATERIAL_EXTS, max_size_bytes=MAX_MATERIAL_SIZE_BYTES)
+        if error:
+            messages = {
+                'missing':      'Please choose a file to upload.',
+                'invalid_type': 'Only PDF and image files (PNG, JPG, GIF, WebP) are allowed.',
+                'too_large':    'That file is too large — the maximum size is 4 MB.',
+            }
+            flash(messages.get(error, 'Could not upload that file.'), 'error')
+            return render_template('materials/upload.html', user=u, levels=LEVELS, regions=REGIONS)
+
+        original_name = secure_filename(uploaded_file.filename)
         mat = {
             "id":          f"m-{str(uuid.uuid4())[:8]}",
             "title":       request.form.get('title'),
             "description": request.form.get('description'),
             "level":       request.form.get('level'),
             "region":      region,
-            "file_name":   request.form.get('file_name','document.pdf'),
-            "file_size":   "N/A",
-            "file_type":   request.form.get('file_type','pdf'),
+            "file_name":   original_name,
+            "stored_name": stored_name,
+            "file_size":   human_file_size(size_bytes),
+            "file_type":   original_name.rsplit('.', 1)[-1].lower(),
             "uploaded_by": u['id'],
             "uploaded_at": datetime.now().strftime('%Y-%m-%d'),
             "downloads":   0,
@@ -1456,10 +2241,16 @@ def material_download(mat_id):
     if not user_can_see_material(mat, u):
         flash('You do not have access to this material.', 'error')
         return redirect(url_for('materials'))
-    # Increment download count
+    if not mat.get('stored_name'):
+        flash('This material has no file attached yet. Please contact your administrator.', 'error')
+        return redirect(url_for('materials'))
+    stored_path = os.path.join(MATERIALS_UPLOAD_DIR, mat['stored_name'])
+    if not os.path.exists(stored_path):
+        flash('That file is missing from storage. Please contact your administrator.', 'error')
+        return redirect(url_for('materials'))
     mat['downloads'] = mat.get('downloads', 0) + 1
-    flash(f"Downloading '{mat['title']}'... (In production this would serve the actual file)", 'success')
-    return redirect(url_for('materials'))
+    return send_from_directory(MATERIALS_UPLOAD_DIR, mat['stored_name'],
+        as_attachment=True, download_name=mat.get('file_name', mat['stored_name']))
 
 @app.route('/materials/<mat_id>/delete', methods=['POST'])
 @login_required
@@ -1472,6 +2263,10 @@ def material_delete(mat_id):
         if u['role'] == 'regional_admin' and mat['region'] not in ('global', u['region']):
             flash('You can only delete materials in your region.', 'error')
             return redirect(url_for('materials'))
+        if mat.get('stored_name'):
+            stored_path = os.path.join(MATERIALS_UPLOAD_DIR, mat['stored_name'])
+            if os.path.exists(stored_path):
+                os.remove(stored_path)
         STUDY_MATERIALS = [m for m in STUDY_MATERIALS if m['id'] != mat_id]
         flash(f"Material deleted.", 'success')
     return redirect(url_for('materials'))
@@ -1588,12 +2383,23 @@ def parent_upload_video():
     request_id  = request.form.get('request_id')
     student_id  = request.form.get('student_id')
     video_title = request.form.get('video_title','My Activity Video')
-    video_url   = request.form.get('video_url','')  # In prod: handle actual file upload
+    video_url   = request.form.get('video_url','').strip()  # external link (YouTube/Drive) — optional
     description = request.form.get('description','')
     student = next((s for s in STUDENTS if s['id'] == student_id), None)
     if not student:
         flash('Student not found.', 'error')
         return redirect(url_for('parent_video_requests'))
+
+    uploaded_file = request.files.get('video_file')
+    stored_name, size_bytes, upload_error = save_uploaded_file(uploaded_file, VIDEOS_UPLOAD_DIR, ALLOWED_VIDEO_EXTS)
+
+    if not stored_name and not video_url:
+        if upload_error == 'invalid_type':
+            flash('That file type is not a supported video format. Please upload MP4, MOV, WebM, or M4V, or paste a link instead.', 'error')
+        else:
+            flash('Please either upload a video file or paste a video link (YouTube/Drive).', 'error')
+        return redirect(url_for('parent_video_requests'))
+
     video = {
         "id":          str(uuid.uuid4()),
         "student_id":  student_id,
@@ -1602,7 +2408,9 @@ def parent_upload_video():
         "request_id":  request_id,
         "title":       video_title,
         "description": description,
-        "video_url":   video_url or f"activity_{student_id}_{datetime.now().strftime('%Y%m%d')}.mp4",
+        "stored_name": stored_name,          # real uploaded file, if provided
+        "video_url":   video_url or None,    # external link, if provided instead
+        "file_size":   human_file_size(size_bytes) if size_bytes else None,
         "uploaded_at": datetime.now().strftime('%Y-%m-%d'),
         "status":      "submitted",
     }
@@ -1611,9 +2419,25 @@ def parent_upload_video():
     req = next((r for r in VIDEO_REQUESTS if r['id'] == request_id), None)
     if req:
         req['status']     = 'submitted'
-        req['video_name'] = video['video_url']
+        req['video_name'] = video.get('video_url') or video.get('stored_name')
     flash(f"Video uploaded successfully for {student['name']}! 🎬", 'success')
+    send_whatsapp(student.get('parent1_whatsapp'), f"Your video '{video_title}' for {student['name']} was received. Thank you! 🎬")
     return redirect(url_for('parent_video_requests'))
+
+@app.route('/videos/<stored_name>')
+@login_required
+def serve_activity_video(stored_name):
+    """Stream an uploaded activity video — access limited to the uploading family and staff."""
+    video = next((v for v in ACTIVITY_VIDEOS if v.get('stored_name') == stored_name), None)
+    if not video:
+        abort(404)
+    u = current_user()
+    student = next((s for s in STUDENTS if s['id'] == video['student_id']), None)
+    is_owner = student and student.get('parent1_email', '').lower() == u['email'].lower()
+    is_staff = u['role'] in ('admin', 'regional_admin', 'teacher')
+    if not (is_owner or is_staff):
+        abort(403)
+    return send_from_directory(VIDEOS_UPLOAD_DIR, stored_name)
 
 @app.route('/teacher/videos')
 @login_required
@@ -1680,65 +2504,299 @@ def admin_festival_delete(fest_id):
     return redirect(url_for('admin_festivals'))
 
 
+@app.route('/curriculum')
+@login_required
+@role_required('admin')
+def curriculum_levels():
+    u = current_user()
+    levels_data = []
+    for lv in LEVELS:
+        curr = LEVEL_CURRICULA[lv['id']]
+        levels_data.append({"level": lv, "total_weeks": curr['total_weeks'], "week_count": len(get_curriculum_weeks(lv['id']))})
+    return render_template('admin/curriculum.html', user=u, levels_data=levels_data,
+        min_weeks=MIN_CURRICULUM_WEEKS, max_weeks=MAX_CURRICULUM_WEEKS)
+
+@app.route('/curriculum/<level_id>/duration', methods=['POST'])
+@login_required
+@role_required('admin')
+def curriculum_set_duration(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    try:
+        new_total = int(request.form.get('total_weeks', 0))
+    except ValueError:
+        new_total = 0
+    if not (MIN_CURRICULUM_WEEKS <= new_total <= MAX_CURRICULUM_WEEKS):
+        flash(f"Course duration must be between {MIN_CURRICULUM_WEEKS} and {MAX_CURRICULUM_WEEKS} weeks.", 'error')
+        return redirect(url_for('curriculum_levels'))
+
+    existing = get_curriculum_weeks(level_id)
+    current_total = len(existing)
+    if new_total > current_total:
+        # Add new blank weeks at the end, preserving everything already designed
+        for wk in range(current_total + 1, new_total + 1):
+            topic = _SAMPLE_TOPICS[(wk - 1) % len(_SAMPLE_TOPICS)]
+            CURRICULUM_WEEKS.append({
+                "id": f"cw-{level_id}-{wk}", "level_id": level_id, "week_number": wk,
+                "title": f"Week {wk}: {topic}", "content": f"Guided study for Week {wk} covering: {topic}.",
+            })
+    elif new_total < current_total:
+        # Trim trailing weeks beyond the new duration
+        keep_ids = {w['id'] for w in existing if w['week_number'] <= new_total}
+        CURRICULUM_WEEKS[:] = [w for w in CURRICULUM_WEEKS if w['level_id'] != level_id or w['id'] in keep_ids]
+
+    LEVEL_CURRICULA[level_id]['total_weeks'] = new_total
+    flash(f"{level_name(level_id)} curriculum duration set to {new_total} weeks.", 'success')
+    return redirect(url_for('curriculum_levels'))
+
+@app.route('/curriculum/<level_id>')
+@login_required
+@role_required('admin')
+def curriculum_weeks_list(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    u = current_user()
+    weeks = get_curriculum_weeks(level_id)
+    return render_template('admin/curriculum_weeks.html', user=u, level_id=level_id,
+        weeks=weeks, total_weeks=LEVEL_CURRICULA[level_id]['total_weeks'])
+
+@app.route('/curriculum/<level_id>/week/<int:week_number>', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def curriculum_week_edit(level_id, week_number):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    u = current_user()
+    week = next((w for w in CURRICULUM_WEEKS if w['level_id'] == level_id and w['week_number'] == week_number), None)
+    if not week:
+        flash('That week does not exist for this level.', 'error')
+        return redirect(url_for('curriculum_weeks_list', level_id=level_id))
+    if request.method == 'POST':
+        week['title'] = request.form.get('title', '').strip() or week['title']
+        week['content'] = request.form.get('content', '').strip()
+        flash(f"Week {week_number} updated for {level_name(level_id)}.", 'success')
+        return redirect(url_for('curriculum_weeks_list', level_id=level_id))
+    return render_template('admin/curriculum_week_form.html', user=u, level_id=level_id, week=week)
+
+
+@app.route('/admin/class-times')
+@login_required
+@role_required('admin')
+def admin_class_times():
+    u = current_user()
+    levels_data = []
+    for lv in LEVELS:
+        slots = GLOBAL_CLASS_TIMES.get(lv['id'], {}).get('slots', [])
+        levels_data.append({"level": lv, "slots": slots, "registration_open": LEVEL_REGISTRATION_OPEN.get(lv['id'], True)})
+    return render_template('admin/class_times.html', user=u, levels_data=levels_data)
+
+@app.route('/admin/class-times/<level_id>/add', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_class_times_add(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    day   = request.form.get('day', '').strip()
+    time  = request.form.get('time', '').strip()
+    label = request.form.get('label', '').strip()
+    if not day or not time:
+        flash('Please provide both a day and a time.', 'error')
+        return redirect(url_for('admin_class_times'))
+    GLOBAL_CLASS_TIMES.setdefault(level_id, {"level_id": level_id, "slots": []})
+    GLOBAL_CLASS_TIMES[level_id]['slots'].append({"day": day, "time": time, "label": label})
+    flash(f"Added {day} {time} to {level_name(level_id)}'s global schedule.", 'success')
+    return redirect(url_for('admin_class_times'))
+
+@app.route('/admin/class-times/<level_id>/remove', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_class_times_remove(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    idx = request.form.get('index', type=int)
+    slots = GLOBAL_CLASS_TIMES.get(level_id, {}).get('slots', [])
+    if idx is not None and 0 <= idx < len(slots):
+        removed = slots.pop(idx)
+        flash(f"Removed {removed['day']} {removed['time']} from {level_name(level_id)}.", 'success')
+    return redirect(url_for('admin_class_times'))
+
+@app.route('/admin/class-times/<level_id>/toggle-registration', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_class_times_toggle(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    LEVEL_REGISTRATION_OPEN[level_id] = not LEVEL_REGISTRATION_OPEN.get(level_id, True)
+    status = 'now open for registration' if LEVEL_REGISTRATION_OPEN[level_id] else 'now closed for registration'
+    flash(f"{level_name(level_id)} is {status}.", 'success')
+    return redirect(url_for('admin_class_times'))
+
+
+@app.route('/radmin/class-times')
+@login_required
+@role_required('regional_admin')
+def radmin_class_times():
+    u = current_user()
+    region_id = u['region']
+    region = next((r for r in REGIONS if r['id'] == region_id), None)
+    levels_data = []
+    for lv in LEVELS:
+        slots, source = get_effective_class_times(region_id, lv['id'])
+        levels_data.append({"level": lv, "slots": slots, "source": source})
+    return render_template('radmin/class_times.html', user=u, region=region, levels_data=levels_data)
+
+@app.route('/radmin/class-times/<level_id>/add', methods=['POST'])
+@login_required
+@role_required('regional_admin')
+def radmin_class_times_add(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    u = current_user()
+    region_id = u['region']
+    day   = request.form.get('day', '').strip()
+    time  = request.form.get('time', '').strip()
+    label = request.form.get('label', '').strip()
+    if not day or not time:
+        flash('Please provide both a day and a time.', 'error')
+        return redirect(url_for('radmin_class_times'))
+    key = _rl_key(region_id, level_id)
+    if key not in REGION_CLASS_TIMES:
+        # First override for this level — start from a copy of the global default
+        # rather than empty, so the admin is editing on top of what's already there.
+        base_slots = list(GLOBAL_CLASS_TIMES.get(level_id, {}).get('slots', []))
+        REGION_CLASS_TIMES[key] = {"region_id": region_id, "level_id": level_id, "slots": base_slots}
+    REGION_CLASS_TIMES[key]['slots'].append({"day": day, "time": time, "label": label})
+    flash(f"Added {day} {time} to {level_name(level_id)} for {region_label(region_id)}.", 'success')
+    return redirect(url_for('radmin_class_times'))
+
+@app.route('/radmin/class-times/<level_id>/remove', methods=['POST'])
+@login_required
+@role_required('regional_admin')
+def radmin_class_times_remove(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    u = current_user()
+    region_id = u['region']
+    key = _rl_key(region_id, level_id)
+    idx = request.form.get('index', type=int)
+    if key in REGION_CLASS_TIMES:
+        slots = REGION_CLASS_TIMES[key]['slots']
+        if idx is not None and 0 <= idx < len(slots):
+            removed = slots.pop(idx)
+            flash(f"Removed {removed['day']} {removed['time']} from {level_name(level_id)}.", 'success')
+    return redirect(url_for('radmin_class_times'))
+
+@app.route('/radmin/class-times/<level_id>/reset', methods=['POST'])
+@login_required
+@role_required('regional_admin')
+def radmin_class_times_reset(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    u = current_user()
+    key = _rl_key(u['region'], level_id)
+    REGION_CLASS_TIMES.pop(key, None)
+    flash(f"{level_name(level_id)} reverted to the global default schedule for {region_label(u['region'])}.", 'success')
+    return redirect(url_for('radmin_class_times'))
+
+
+@app.route('/admin/scheduler')
+@login_required
+@role_required('admin')
+def admin_scheduler():
+    u = current_user()
+    levels_data = []
+    for lv in LEVELS:
+        gsched = GLOBAL_LEVEL_SCHEDULES[lv['id']]
+        override_count = len([k for k in REGION_LEVEL_SCHEDULES
+                               if k.endswith(f":{lv['id']}") and REGION_LEVEL_SCHEDULES[k].get('start_date')])
+        levels_data.append({
+            "level": lv, "sched": gsched, "total_weeks": LEVEL_CURRICULA[lv['id']]['total_weeks'],
+            "override_count": override_count,
+        })
+    return render_template('admin/scheduler.html', user=u, levels_data=levels_data, regions=REGIONS)
+
+@app.route('/admin/scheduler/<level_id>/start', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_scheduler_start(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    u = current_user()
+    start_date = request.form.get('start_date')
+    if not start_date:
+        flash('Please choose a start date.', 'error')
+        return redirect(url_for('admin_scheduler'))
+    GLOBAL_LEVEL_SCHEDULES[level_id].update({
+        "start_date": start_date, "started_by": u['id'],
+        "started_at": datetime.now().strftime('%Y-%m-%d %H:%M'), "status": "active",
+    })
+    flash(f"Global schedule for {level_name(level_id)} set to start {start_date}. Applies to every region that hasn't set its own date for this level. 🌍", 'success')
+    return redirect(url_for('admin_scheduler'))
+
+@app.route('/admin/scheduler/<level_id>/reset', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_scheduler_reset(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
+    GLOBAL_LEVEL_SCHEDULES[level_id].update({
+        "start_date": None, "started_by": None, "started_at": None, "status": "not_started",
+    })
+    flash(f"Global schedule cleared for {level_name(level_id)}.", 'success')
+    return redirect(url_for('admin_scheduler'))
+
+
 @app.route('/radmin/scheduler')
 @login_required
 @role_required('regional_admin')
 def radmin_scheduler():
     u = current_user()
     region_id = u['region']
-    sched = REGION_SCHEDULES[region_id]
     region = next((r for r in REGIONS if r['id'] == region_id), None)
     festivals = sorted(get_region_festivals(region_id), key=lambda f: f['start_date'])
 
-    schedule_map = compute_schedule_map(region_id) if sched['start_date'] else []
-    today_entry = get_today_entry(region_id) if sched['start_date'] else None
+    levels_progress = []
+    for lv in LEVELS:
+        info = get_level_schedule_info(region_id, lv['id'])
+        entry = get_current_week_entry(region_id, lv['id']) if info['start_date'] else None
+        released = get_released_weeks(region_id, lv['id']) if info['start_date'] else []
+        levels_progress.append({
+            "level": lv, "info": info, "current_entry": entry, "released_count": len(released),
+            "total_weeks": LEVEL_CURRICULA[lv['id']]['total_weeks'],
+        })
 
-    # Week-level summary for display
-    weeks_summary = []
-    if schedule_map:
-        current_week = None
-        for entry in schedule_map:
-            if entry['session']:
-                wk = entry['session']['week_number']
-                if current_week is None or current_week['week_number'] != wk:
-                    current_week = {"week_number": wk, "start_date": entry['date'], "end_date": entry['date'], "session_count": 0}
-                    weeks_summary.append(current_week)
-                current_week['end_date'] = entry['date']
-                current_week['session_count'] += 1
+    return render_template('radmin/scheduler.html', user=u, region=region,
+        festivals=festivals, levels_progress=levels_progress)
 
-    return render_template('radmin/scheduler.html', user=u, region=region, sched=sched,
-        festivals=festivals, today_entry=today_entry, weeks_summary=weeks_summary,
-        total_sessions=len(CURRICULUM_SESSIONS), curriculum=MASTER_CURRICULUM)
-
-@app.route('/radmin/scheduler/start', methods=['POST'])
+@app.route('/radmin/scheduler/<level_id>/start', methods=['POST'])
 @login_required
 @role_required('regional_admin')
-def radmin_scheduler_start():
+def radmin_scheduler_start(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
     u = current_user()
     region_id = u['region']
     start_date = request.form.get('start_date')
     if not start_date:
         flash('Please choose a start date.', 'error')
         return redirect(url_for('radmin_scheduler'))
-    REGION_SCHEDULES[region_id].update({
-        "start_date": start_date,
-        "started_by": u['id'],
-        "started_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
-        "status": "active",
-    })
-    flash(f"Six-week schedule started for {region_label(region_id)} on {start_date}! 🎉", 'success')
+    REGION_LEVEL_SCHEDULES[_rl_key(region_id, level_id)] = {
+        "region_id": region_id, "level_id": level_id, "start_date": start_date,
+        "started_by": u['id'], "started_at": datetime.now().strftime('%Y-%m-%d %H:%M'), "status": "active",
+    }
+    flash(f"{level_name(level_id)} schedule started for {region_label(region_id)} on {start_date}! 🎉", 'success')
     return redirect(url_for('radmin_scheduler'))
 
-@app.route('/radmin/scheduler/reset', methods=['POST'])
+@app.route('/radmin/scheduler/<level_id>/reset', methods=['POST'])
 @login_required
 @role_required('regional_admin')
-def radmin_scheduler_reset():
+def radmin_scheduler_reset(level_id):
+    if level_id not in LEVEL_CURRICULA:
+        abort(404)
     u = current_user()
     region_id = u['region']
-    REGION_SCHEDULES[region_id].update({
-        "start_date": None, "started_by": None, "started_at": None, "status": "not_started",
-    })
-    flash('Schedule reset. You can start it again from any date.', 'success')
+    REGION_LEVEL_SCHEDULES.pop(_rl_key(region_id, level_id), None)
+    flash(f"{level_name(level_id)} reverted to the global default schedule for {region_label(region_id)}.", 'success')
     return redirect(url_for('radmin_scheduler'))
 
 
@@ -1748,44 +2806,52 @@ def radmin_scheduler_reset():
 def teacher_scheduler():
     u = current_user()
     region_id = u['region']
-    sched = REGION_SCHEDULES.get(region_id, {})
-    today_entry = get_today_entry(region_id) if sched.get('start_date') else None
+    level_id = u['class_id'].split('-')[1] if u.get('class_id') else None
+    sched = get_level_schedule_info(region_id, level_id) if level_id else {"start_date": None, "source": None}
     my_students = [s for s in STUDENTS if s.get('class_id') == u.get('class_id')]
 
-    # Homework already assigned for today's session
-    todays_homework = None
-    if today_entry and today_entry['session']:
-        todays_homework = next((h for h in HOMEWORK if h['session_id'] == today_entry['session']['id']
-                                 and h['class_id'] == u.get('class_id')), None)
+    released = get_released_weeks(region_id, level_id) if (sched.get('start_date') and level_id) else []
+    requested_week = request.args.get('week', type=int)
+    if requested_week:
+        entry = next((e for e in released if e['week'] and e['week']['week_number'] == requested_week), None)
+    else:
+        entry = get_current_week_entry(region_id, level_id) if level_id else None
+        if entry is None and released:
+            # No session active exactly today (e.g. mid-festival with no exact match) — show the latest released week
+            weeks_only = [e for e in released if e['week']]
+            entry = weeks_only[-1] if weeks_only else released[-1]
 
-    # Student completion for today's session
+    todays_homework = None
     completion = []
-    if today_entry and today_entry['session']:
-        sid = today_entry['session']['id']
+    if entry and entry.get('week'):
+        wid = entry['week']['id']
+        todays_homework = next((h for h in HOMEWORK if h['week_id'] == wid and h['class_id'] == u.get('class_id')), None)
         for s in my_students:
-            done = any(p['student_id'] == s['id'] and p['session_id'] == sid for p in STUDENT_PROGRESS)
+            done = any(p['student_id'] == s['id'] and p['week_id'] == wid for p in STUDENT_PROGRESS)
             completion.append({"student": s, "completed": done})
 
-    return render_template('teacher/scheduler.html', user=u, sched=sched, today_entry=today_entry,
+    return render_template('teacher/scheduler.html', user=u, sched=sched, entry=entry,
         students=my_students, todays_homework=todays_homework, completion=completion,
-        curriculum=MASTER_CURRICULUM)
+        level_id=level_id, released=released, total_weeks=LEVEL_CURRICULA.get(level_id, {}).get('total_weeks'))
 
 @app.route('/teacher/scheduler/homework/new', methods=['POST'])
 @login_required
 @role_required('teacher')
 def teacher_homework_new():
     u = current_user()
-    session_id = request.form.get('session_id')
+    week_id = request.form.get('week_id')
     title = request.form.get('title', '').strip()
     description = request.form.get('description', '')
     due_date = request.form.get('due_date', '')
-    if not session_id or not title:
-        flash('Homework needs a title and a linked session.', 'error')
+    if not week_id or not title:
+        flash('Homework needs a title and a linked week.', 'error')
         return redirect(url_for('teacher_scheduler'))
+    level_id = u['class_id'].split('-')[1] if u.get('class_id') else None
     HOMEWORK.append({
         "id": f"hw-{str(uuid.uuid4())[:8]}",
-        "session_id": session_id,
+        "week_id": week_id,
         "region_id": u['region'],
+        "level_id": level_id,
         "class_id": u.get('class_id'),
         "teacher_id": u['id'],
         "teacher_name": u['name'],
@@ -1794,7 +2860,7 @@ def teacher_homework_new():
         "due_date": due_date,
         "created_at": datetime.now().strftime('%Y-%m-%d'),
     })
-    flash(f"Homework '{title}' assigned for today's session! 📝", 'success')
+    flash(f"Homework '{title}' assigned! 📝", 'success')
     return redirect(url_for('teacher_scheduler'))
 
 @app.route('/teacher/scheduler/homework')
@@ -1803,9 +2869,9 @@ def teacher_homework_new():
 def teacher_homework_list():
     u = current_user()
     my_hw = [h for h in HOMEWORK if h['class_id'] == u.get('class_id')]
-    sessions_by_id = {s['id']: s for s in CURRICULUM_SESSIONS}
+    weeks_by_id = {w['id']: w for w in CURRICULUM_WEEKS}
     for h in my_hw:
-        h['session'] = sessions_by_id.get(h['session_id'])
+        h['week'] = weeks_by_id.get(h['week_id'])
     my_hw.sort(key=lambda h: h['created_at'], reverse=True)
     return render_template('teacher/homework.html', user=u, homework=my_hw)
 
@@ -1815,19 +2881,19 @@ def teacher_homework_list():
 def teacher_mark_session_complete():
     u = current_user()
     student_id = request.form.get('student_id')
-    session_id = request.form.get('session_id')
+    week_id = request.form.get('week_id')
     student = next((s for s in STUDENTS if s['id'] == student_id), None)
     if not student:
         flash('Student not found.', 'error')
         return redirect(url_for('teacher_scheduler'))
-    already = any(p['student_id'] == student_id and p['session_id'] == session_id for p in STUDENT_PROGRESS)
+    already = any(p['student_id'] == student_id and p['week_id'] == week_id for p in STUDENT_PROGRESS)
     if not already:
         STUDENT_PROGRESS.append({
-            "id": str(uuid.uuid4()), "student_id": student_id, "session_id": session_id,
-            "region_id": u['region'], "status": "completed",
+            "id": str(uuid.uuid4()), "student_id": student_id, "week_id": week_id,
+            "region_id": u['region'], "level_id": student.get('level'), "status": "completed",
             "completed_at": datetime.now().strftime('%Y-%m-%d %H:%M'), "marked_by": u['id'],
         })
-        flash(f"Marked today's session complete for {student['name']}.", 'success')
+        flash(f"Marked this week's session complete for {student['name']}.", 'success')
     return redirect(url_for('teacher_scheduler'))
 
 
@@ -1837,28 +2903,37 @@ def teacher_mark_session_complete():
 def parent_scheduler():
     u = current_user()
     region_id = u['region']
-    sched = REGION_SCHEDULES.get(region_id, {})
-    today_entry = get_today_entry(region_id) if sched.get('start_date') else None
     my_children = [s for s in STUDENTS if s.get('parent1_email', '').lower() == u['email'].lower()]
+    requested_week = request.args.get('week', type=int)
 
     children_data = []
     for child in my_children:
-        progress = get_schedule_progress_summary(region_id, child['id']) if sched.get('start_date') else None
-        completed_today = False
-        if today_entry and today_entry['session']:
-            completed_today = any(p['student_id'] == child['id'] and p['session_id'] == today_entry['session']['id']
-                                   for p in STUDENT_PROGRESS)
-        # Homework relevant to this child's class
-        homework_today = None
-        if today_entry and today_entry['session']:
-            homework_today = next((h for h in HOMEWORK if h['session_id'] == today_entry['session']['id']
-                                    and h['class_id'] == child.get('class_id')), None)
+        level_id = child.get('level')
+        info = get_level_schedule_info(region_id, level_id)
+        released = get_released_weeks(region_id, level_id) if info['start_date'] else []
+        if requested_week:
+            entry = next((e for e in released if e['week'] and e['week']['week_number'] == requested_week), None)
+        else:
+            entry = get_current_week_entry(region_id, level_id) if info['start_date'] else None
+            if entry is None and released:
+                weeks_only = [e for e in released if e['week']]
+                entry = weeks_only[-1] if weeks_only else released[-1]
+
+        progress = get_schedule_progress_summary(region_id, level_id, child['id']) if info['start_date'] else None
+        completed_this_week = False
+        homework_this_week = None
+        if entry and entry.get('week'):
+            wid = entry['week']['id']
+            completed_this_week = any(p['student_id'] == child['id'] and p['week_id'] == wid for p in STUDENT_PROGRESS)
+            homework_this_week = next((h for h in HOMEWORK if h['week_id'] == wid and h['class_id'] == child.get('class_id')), None)
+
         children_data.append({
-            "child": child, "progress": progress, "completed_today": completed_today, "homework_today": homework_today,
+            "child": child, "info": info, "progress": progress, "entry": entry,
+            "completed_this_week": completed_this_week, "homework_this_week": homework_this_week,
+            "released": released,
         })
 
-    return render_template('parent/scheduler.html', user=u, sched=sched, today_entry=today_entry,
-        children_data=children_data, curriculum=MASTER_CURRICULUM)
+    return render_template('parent/scheduler.html', user=u, children_data=children_data)
 
 @app.route('/parent/scheduler/mark-complete', methods=['POST'])
 @login_required
@@ -1866,20 +2941,20 @@ def parent_scheduler():
 def parent_mark_session_complete():
     u = current_user()
     student_id = request.form.get('student_id')
-    session_id = request.form.get('session_id')
+    week_id = request.form.get('week_id')
     child = next((s for s in STUDENTS if s['id'] == student_id
                   and s.get('parent1_email', '').lower() == u['email'].lower()), None)
     if not child:
         flash('Child not found.', 'error')
         return redirect(url_for('parent_scheduler'))
-    already = any(p['student_id'] == student_id and p['session_id'] == session_id for p in STUDENT_PROGRESS)
+    already = any(p['student_id'] == student_id and p['week_id'] == week_id for p in STUDENT_PROGRESS)
     if not already:
         STUDENT_PROGRESS.append({
-            "id": str(uuid.uuid4()), "student_id": student_id, "session_id": session_id,
-            "region_id": u['region'], "status": "completed",
+            "id": str(uuid.uuid4()), "student_id": student_id, "week_id": week_id,
+            "region_id": u['region'], "level_id": child.get('level'), "status": "completed",
             "completed_at": datetime.now().strftime('%Y-%m-%d %H:%M'), "marked_by": u['id'],
         })
-        flash(f"Great job! Marked today's session complete for {child['name']}. 🎉", 'success')
+        flash(f"Great job! Marked this week's session complete for {child['name']}. 🎉", 'success')
     return redirect(url_for('parent_scheduler'))
 
 # ─────────────────────────────────────────
@@ -1888,6 +2963,19 @@ def parent_mark_session_complete():
 @app.route('/api/regions')
 def api_regions():
     return jsonify(REGIONS)
+
+@app.route('/api/class-times/<region_id>/<level_id>')
+def api_class_times(region_id, level_id):
+    """Returns the effective class meeting slots (day/time/label) for a region+level,
+    honoring a Regional Admin's override if one exists, otherwise the global default."""
+    if level_id not in LEVEL_REGISTRATION_OPEN:
+        return jsonify({"slots": [], "source": None, "registration_open": False}), 404
+    slots, source = get_effective_class_times(region_id, level_id)
+    return jsonify({
+        "slots": slots,
+        "source": source,
+        "registration_open": LEVEL_REGISTRATION_OPEN.get(level_id, True),
+    })
 
 @app.route('/api/stats')
 def api_stats():
@@ -2021,6 +3109,11 @@ def parent_teachers():
         user=u, teacher_info=teacher_info, all_teacher_info=all_teacher_info,
         my_children=my_children, region=my_region, regions=REGIONS,
     )
+
+@app.errorhandler(413)
+def file_too_large(e):
+    flash('That upload is too large for this server to accept. Please choose a smaller file.', 'error')
+    return redirect(request.referrer or url_for('index')), 302
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

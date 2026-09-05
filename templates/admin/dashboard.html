@@ -81,7 +81,7 @@
       </div>
     </div>
     <div class="wb-meta">
-      <div class="wb-item"><div class="wl">Region</div><div class="wv" style="color:var(--jain-yellow);">{{ region_label(user.region) }}</div></div>
+      <div class="wb-item"><div class="wl">Region</div><div class="wv" style="color:var(--jain-yellow);">{{ get_admin_active_region().flag }} {{ get_admin_active_region().name }}</div></div>
       <div class="wb-item"><div class="wl">Country</div><div class="wv">{{ user.country }}</div></div>
       <div class="wb-item"><div class="wl">City</div><div class="wv">{{ user.city }}</div></div>
     </div>

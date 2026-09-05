@@ -1,16 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Today's Session - Teacher GJPP{% endblock %}
+{% block title %}Study Session - Teacher GJPP{% endblock %}
 {% block extra_css %}
 <style>
 .pg{padding:1.5rem;}
 @media(min-width:900px){.pg{padding:2rem 2.5rem;}}
 .pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
-.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.25rem;}
+
+.week-nav{display:flex;gap:0.4rem;overflow-x:auto;padding-bottom:0.5rem;margin-bottom:1.25rem;}
+.week-pill{flex-shrink:0;padding:0.4rem 0.85rem;border-radius:100px;font-size:0.78rem;font-weight:800;text-decoration:none;border:1.5px solid var(--border);color:var(--text-muted);background:#fff;white-space:nowrap;}
+.week-pill.active{background:var(--jain-green);color:#fff;border-color:var(--jain-green);}
+.week-pill.festival{border-color:rgba(245,197,24,0.5);color:var(--yellow-dark);background:var(--yellow-light);}
 
 .today-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.25rem;}
 .today-head{padding:1.1rem 1.25rem;background:linear-gradient(135deg,var(--jain-green),var(--green-dark));}
 .today-head .tlabel{font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);margin-bottom:0.2rem;}
-.today-head h3{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:800;color:#fff;}
+.today-head h3{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:800;color:#fff;}
 .today-body{padding:1.25rem;}
 
 .festival-alert{background:var(--yellow-light);border:1px solid rgba(245,197,24,0.4);border-radius:10px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;}
@@ -28,33 +33,51 @@
 {% endblock %}
 {% block content %}
 <div class="pg">
-  <div class="pg-title">Today's Study Session</div>
-  <div class="pg-sub">{{ curriculum.name }} · {{ region_label(user.region) }} · Class {{ user.class_id or '—' }}</div>
+  <div class="pg-title">Study Session</div>
+  <div class="pg-sub">{{ level_name(level_id) if level_id else '—' }} · {{ region_label(user.region) }} · Class {{ user.class_id or '—' }}</div>
 
   {% if not sched.start_date %}
   <div class="not-started">
     <div style="font-size:2.5rem;margin-bottom:0.75rem;">🗓️</div>
     <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.4rem;">Schedule Not Started Yet</div>
-    <p style="color:var(--text-muted);font-size:0.875rem;">Your Regional Admin hasn't started the six-week schedule for {{ region_label(user.region) }} yet. Check back once it begins.</p>
+    <p style="color:var(--text-muted);font-size:0.875rem;">Your Regional Admin hasn't started the study schedule for {{ region_label(user.region) }} yet. Check back once it begins.</p>
   </div>
   {% else %}
 
+  {% if sched.source == 'region' %}
+  <div style="background:var(--blue-light);border-radius:9px;padding:0.6rem 0.9rem;font-size:0.78rem;color:var(--jain-blue);font-weight:700;margin-bottom:1rem;">📍 Using {{ region_label(user.region) }}'s custom start date ({{ sched.start_date }})</div>
+  {% elif sched.source == 'global' %}
+  <div style="background:var(--blue-light);border-radius:9px;padding:0.6rem 0.9rem;font-size:0.78rem;color:var(--jain-blue);font-weight:700;margin-bottom:1rem;">🌍 Using the global default start date ({{ sched.start_date }})</div>
+  {% endif %}
+
+  <!-- Week navigator: jump between any released week -->
+  {% if released %}
+  <div class="week-nav">
+    {% for e in released %}
+    {% if e.week %}
+    <a href="/teacher/scheduler?week={{ e.week.week_number }}" class="week-pill {{ 'active' if entry and entry.week and entry.week.week_number == e.week.week_number }}">W{{ e.week.week_number }}</a>
+    {% else %}
+    <span class="week-pill festival">🪔 {{ e.festival.name[:14] }}</span>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <div class="today-card">
     <div class="today-head">
-      <div class="tlabel">Today</div>
-      {% if today_entry and today_entry.session %}
-      <h3>Week {{ today_entry.session.week_number }} · Day {{ today_entry.session.day_in_week }} — {{ today_entry.session.title }}</h3>
-      {% elif today_entry and today_entry.festival %}
-      <h3>🪔 {{ today_entry.festival.name }} — Schedule Paused</h3>
+      <div class="tlabel">{{ level_name(level_id) }}{% if entry and entry.week %} · Week {{ entry.week.week_number }} of {{ total_weeks }}{% endif %}</div>
+      {% if entry and entry.week %}
+      <h3>{{ entry.week.title }}</h3>
+      {% elif entry and entry.festival %}
+      <h3>🪔 {{ entry.festival.name }} — Schedule Paused</h3>
       {% else %}
-      <h3>No active session today</h3>
+      <h3>No active session</h3>
       {% endif %}
     </div>
     <div class="today-body">
-      {% if today_entry and today_entry.session %}
-      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;margin-bottom:1.25rem;">{{ today_entry.session.content }}</p>
+      {% if entry and entry.week %}
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;margin-bottom:1.25rem;">{{ entry.week.content }}</p>
 
-      <!-- Homework -->
       {% if todays_homework %}
       <div class="hw-existing">
         <strong style="color:var(--green-dark);">📝 Homework Assigned</strong>
@@ -64,8 +87,8 @@
       </div>
       {% else %}
       <form method="POST" action="/teacher/scheduler/homework/new" style="background:var(--bg);border-radius:10px;padding:1rem;border:1px dashed rgba(13,43,110,0.2);">
-        <input type="hidden" name="session_id" value="{{ today_entry.session.id }}">
-        <div style="font-size:0.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.75rem;">📝 Assign Homework for This Session</div>
+        <input type="hidden" name="week_id" value="{{ entry.week.id }}">
+        <div style="font-size:0.8rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.75rem;">📝 Assign Homework for This Week</div>
         <div class="form-group"><label class="form-label">Title <span>*</span></label><input type="text" name="title" class="form-input" required placeholder="e.g. Practice Navkar Mantra recitation"></div>
         <div class="form-group"><label class="form-label">Description</label><textarea name="description" class="form-textarea" style="min-height:65px;" placeholder="Instructions for students…"></textarea></div>
         <div class="form-group"><label class="form-label">Due Date</label><input type="date" name="due_date" class="form-input"></div>
@@ -73,27 +96,26 @@
       </form>
       {% endif %}
 
-      {% elif today_entry and today_entry.festival %}
+      {% elif entry and entry.festival %}
       <div class="festival-alert">
         <span style="font-size:1.5rem;">🪔</span>
         <div>
-          <strong style="color:var(--yellow-dark);">{{ today_entry.festival.name }}</strong>
+          <strong style="color:var(--yellow-dark);">{{ entry.festival.name }}</strong>
           <p style="font-size:0.82rem;color:var(--yellow-dark);opacity:0.85;margin-top:0.25rem;">
-            {{ today_entry.festival.start_date }} → {{ today_entry.festival.end_date }}. Sessions are paused and will resume automatically after this period.
+            {{ entry.festival.start_date }} → {{ entry.festival.end_date }}. This week is paused and will resume automatically after the festival ends.
           </p>
         </div>
       </div>
       {% else %}
-      <p style="color:var(--text-muted);font-size:0.875rem;">No session is scheduled for today — the six-week program may not have reached your region yet, or has already completed.</p>
+      <p style="color:var(--text-muted);font-size:0.875rem;">No session is available yet, or the {{ total_weeks }}-week curriculum has been completed.</p>
       {% endif %}
     </div>
   </div>
 
-  <!-- Student completion for today -->
-  {% if today_entry and today_entry.session %}
+  {% if entry and entry.week %}
   <div class="sc">
     <div class="sc-head">
-      <h3>Student Completion — Today's Session</h3>
+      <h3>Student Completion — Week {{ entry.week.week_number }}</h3>
       <span style="font-size:0.78rem;color:var(--text-muted);">{{ completion|selectattr('completed')|list|length }} / {{ completion|length }} done</span>
     </div>
     {% if completion %}
@@ -108,7 +130,7 @@
         {% else %}
         <form method="POST" action="/teacher/scheduler/mark-complete">
           <input type="hidden" name="student_id" value="{{ c.student.id }}">
-          <input type="hidden" name="session_id" value="{{ today_entry.session.id }}">
+          <input type="hidden" name="week_id" value="{{ entry.week.id }}">
           <button type="submit" class="btn btn-outline-blue btn-sm">Mark Complete</button>
         </form>
         {% endif %}

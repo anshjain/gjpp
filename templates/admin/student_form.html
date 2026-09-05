@@ -81,6 +81,11 @@
           </div>
           <div class="form-group"><label class="form-label">City</label><input type="text" name="city" class="form-input" placeholder="e.g. New York" value="{{ student.city if student else '' }}"></div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Full Address</label>
+          <textarea name="address" class="form-textarea" style="min-height:65px;" placeholder="Street address, apartment/suite, etc.">{{ student.address if student else '' }}</textarea>
+        </div>
+        <div class="form-group"><label class="form-label">Postal / ZIP Code</label><input type="text" name="postal_code" class="form-input" placeholder="e.g. 10001" value="{{ student.postal_code if student else '' }}"></div>
 
         <div class="fsect">Parent / Guardian (Primary)</div>
         <div class="form-group"><label class="form-label">Parent Name <span>*</span></label><input type="text" name="parent1_name" class="form-input" required value="{{ student.parent1_name if student else '' }}"></div>

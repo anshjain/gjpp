@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Regional Admins - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+.sc{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.sc-head{padding:0.9rem 1.1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:0.5rem;}
+.sc-head h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--jain-blue);}
+.av{width:32px;height:32px;border-radius:50%;background:#5B1A8A;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:800;margin-right:0.4rem;flex-shrink:0;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+    <div>
+      <div class="pg-title">Regional Admins</div>
+      <div class="pg-sub">{{ radmins|length }} regional admin{{ 's' if radmins|length != 1 }}</div>
+    </div>
+    <a href="/admin/regional-admins/new" class="btn btn-sm" style="background:#5B1A8A;color:#fff;">+ Add Regional Admin</a>
+  </div>
+
+  <div class="sc">
+    <div class="sc-head"><h3>Regional Admin Accounts</h3></div>
+    {% if radmins %}
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Name</th><th>Region</th><th>City</th><th>Email</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for r in radmins %}
+        <tr>
+          <td><div style="display:flex;align-items:center;"><div class="av">{{ r.name[0] }}</div><strong style="font-size:0.85rem;">{{ r.name }}</strong></div></td>
+          <td style="font-size:0.78rem;white-space:nowrap;">{{ region_label(r.region) }}</td>
+          <td style="font-size:0.8rem;">{{ r.city }}</td>
+          <td style="font-size:0.8rem;color:var(--text-muted);">{{ r.email }}</td>
+          <td>
+            <div style="display:flex;gap:0.3rem;">
+              <a href="/admin/regional-admins/{{ r.id }}/edit" class="btn btn-blue btn-sm">Edit</a>
+              <form method="POST" action="/admin/regional-admins/{{ r.id }}/delete" onsubmit="return confirm('Remove {{ r.name }} as Regional Admin for {{ region_label(r.region) }}?')">
+                <button type="submit" class="btn btn-red btn-sm">✕</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem 1rem;color:var(--text-muted);">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">🛡️</div>
+      <div style="font-weight:700;color:var(--jain-blue);">No regional admins found</div>
+      <a href="/admin/regional-admins/new" class="btn" style="background:#5B1A8A;color:#fff;margin-top:1rem;">+ Add Regional Admin</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -59,8 +59,13 @@
             <input type="text" name="video_title" class="form-input" placeholder="e.g. {{ req.student_name }}'s {{ req.topic }}" style="height:38px;">
           </div>
           <div class="form-group">
-            <label class="form-label">Video File or URL</label>
-            <input type="text" name="video_url" class="form-input" placeholder="Paste video link (YouTube, Drive) or enter filename" style="height:38px;">
+            <label class="form-label">Upload Video File <span style="color:var(--text-muted);font-weight:400;">(MP4, MOV, WebM · max 50MB)</span></label>
+            <input type="file" name="video_file" class="form-input" accept=".mp4,.mov,.webm,.m4v" style="height:auto;padding:0.55rem 0.75rem;">
+          </div>
+          <div style="text-align:center;font-size:0.76rem;color:var(--text-muted);margin:0.5rem 0;">— or —</div>
+          <div class="form-group">
+            <label class="form-label">Paste a Video Link Instead</label>
+            <input type="text" name="video_url" class="form-input" placeholder="YouTube or Google Drive link" style="height:38px;">
           </div>
           <div class="form-group">
             <label class="form-label">Description <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
@@ -92,6 +97,11 @@
         <div style="padding:0.9rem;">
           <div style="font-weight:700;font-size:0.86rem;color:var(--jain-blue);margin-bottom:0.2rem;">{{ v.title }}</div>
           <div style="font-size:0.75rem;color:var(--text-muted);">{{ v.student_name }} · {{ v.uploaded_at }}</div>
+          {% if v.stored_name %}
+          <a href="/videos/{{ v.stored_name }}" target="_blank" style="font-size:0.74rem;color:var(--jain-blue);font-weight:700;text-decoration:none;display:inline-block;margin-top:0.4rem;">▶️ Watch{% if v.file_size %} ({{ v.file_size }}){% endif %}</a>
+          {% elif v.video_url %}
+          <a href="{{ v.video_url }}" target="_blank" rel="noopener" style="font-size:0.74rem;color:var(--jain-blue);font-weight:700;text-decoration:none;display:inline-block;margin-top:0.4rem;">🔗 Open Link</a>
+          {% endif %}
         </div>
       </div>
       {% endfor %}

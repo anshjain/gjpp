@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Global Study Schedule - Admin GJPP{% endblock %}
+{% block extra_css %}
+<style>
+.pg{padding:1.5rem;}
+@media(min-width:900px){.pg{padding:2rem 2.5rem;}}
+.pg-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.15rem;}
+.pg-sub{color:var(--text-muted);font-size:0.825rem;margin-bottom:1.5rem;}
+.info-box{background:var(--blue-light);border-radius:9px;padding:0.85rem 1rem;font-size:0.8rem;color:var(--text-mid);line-height:1.55;margin-bottom:1.5rem;}
+.level-grid{display:grid;grid-template-columns:1fr;gap:1rem;}
+@media(min-width:640px){.level-grid{grid-template-columns:repeat(2,1fr);}}
+.level-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.level-top{padding:1.1rem 1.25rem;border-top:4px solid var(--jain-blue);}
+.level-top h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--jain-blue);margin-bottom:0.15rem;}
+.level-top .age{font-size:0.78rem;color:var(--text-muted);}
+.status-pill{display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.65rem;border-radius:100px;font-size:0.7rem;font-weight:800;margin-top:0.75rem;}
+.status-active{background:var(--green-light);color:var(--green-dark);}
+.status-inactive{background:var(--bg);color:var(--text-muted);border:1px solid var(--border);}
+.start-form{display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;}
+.start-form input{flex:1;min-width:140px;}
+.override-note{font-size:0.74rem;color:var(--text-muted);margin-top:0.7rem;padding-top:0.7rem;border-top:1px solid var(--border);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pg">
+  <div class="pg-title">Global Study Schedule</div>
+  <div class="pg-sub">Set one default start date per level, applied to every region that hasn't configured its own date for that level.</div>
+
+  <div class="info-box">
+    🌍 <strong>How this works:</strong> A Regional Admin's own start date for a level always takes priority over this global default. Use this page to launch a level everywhere at once — regions can still override it individually from their own Study Scheduler page.
+  </div>
+
+  <div class="level-grid">
+    {% for ld in levels_data %}
+    <div class="level-card">
+      <div class="level-top">
+        <h3>{{ ld.level.name }}</h3>
+        <div class="age">{{ ld.level.age }} · {{ ld.total_weeks }} weeks</div>
+
+        {% if ld.sched.start_date %}
+        <span class="status-pill status-active">✅ Global start: {{ ld.sched.start_date }}</span>
+        <form method="POST" action="/admin/scheduler/{{ ld.level.id }}/reset" onsubmit="return confirm('Clear the global default for {{ ld.level.name }}? Regions with their own override are unaffected.')" style="margin-top:0.85rem;">
+          <button type="submit" class="btn btn-outline-blue btn-sm">↺ Clear Global Default</button>
+        </form>
+        {% else %}
+        <span class="status-pill status-inactive">Not started globally</span>
+        <form method="POST" action="/admin/scheduler/{{ ld.level.id }}/start" class="start-form">
+          <input type="date" name="start_date" class="form-input" required>
+          <button type="submit" class="btn btn-blue btn-sm">Start Globally</button>
+        </form>
+        {% endif %}
+
+        {% if ld.override_count %}
+        <div class="override-note">📍 {{ ld.override_count }} region{{ 's' if ld.override_count != 1 }} using a custom start date for this level.</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

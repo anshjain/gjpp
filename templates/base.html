@@ -579,6 +579,10 @@
         <a href="/admin/class-times" class="sb-link {{ 'active' if request.path=='/admin/class-times' }}"><span class="si">🕐</span> Class Meeting Times</a>
         <a href="/admin/festivals"  class="sb-link {{ 'active' if request.path=='/admin/festivals' }}"><span class="si">🪔</span> Festival Config</a>
         <div class="sb-section">Admin</div>
+        <a href="/admin/pending-accounts" class="sb-link {{ 'active' if '/admin/pending-accounts' in request.path }}">
+          <span class="si">✅</span> Pending Accounts
+          <span class="sb-badge" id="pending-accounts-badge" style="display:none;"></span>
+        </a>
         <a href="/admin/location-requests" class="sb-link {{ 'active' if '/admin/location-requests' in request.path }}">
           <span class="si">📍</span> Location Requests
           <span class="sb-badge" id="pending-badge" style="display:none;"></span>
@@ -594,6 +598,10 @@
         <a href="/radmin/students"  class="sb-link {{ 'active' if '/radmin/students' in request.path }}"><span class="si">🎓</span> My Students</a>
         <a href="/radmin/teachers"  class="sb-link {{ 'active' if '/radmin/teachers' in request.path }}"><span class="si">📖</span> My Teachers</a>
         <a href="/radmin/events"    class="sb-link {{ 'active' if '/radmin/events' in request.path }}"><span class="si">📅</span> Events</a>
+        <a href="/radmin/pending-accounts" class="sb-link {{ 'active' if '/radmin/pending-accounts' in request.path }}">
+          <span class="si">✅</span> Pending Accounts
+          <span class="sb-badge" id="pending-accounts-region-badge" style="display:none;"></span>
+        </a>
         <div class="sb-section">Study Scheduler</div>
         <a href="/radmin/scheduler" class="sb-link {{ 'active' if '/radmin/scheduler' in request.path }}"><span class="si">🗓️</span> Study Schedule</a>
         <a href="/radmin/class-times" class="sb-link {{ 'active' if request.path=='/radmin/class-times' }}"><span class="si">🕐</span> Class Meeting Times</a>
@@ -705,10 +713,14 @@
 </div>
 
 <script>
-/* ── Pending badge ── */
+/* ── Pending badges ── */
 fetch('/api/stats').then(r=>r.json()).then(d=>{
   const b=document.getElementById('pending-badge');
   if(b&&d.pending_requests>0){b.textContent=d.pending_requests;b.style.display='inline';}
+  const pa=document.getElementById('pending-accounts-badge');
+  if(pa&&d.pending_accounts>0){pa.textContent=d.pending_accounts;pa.style.display='inline';}
+  const par=document.getElementById('pending-accounts-region-badge');
+  if(par&&d.pending_accounts_region>0){par.textContent=d.pending_accounts_region;par.style.display='inline';}
 }).catch(()=>{});
 
 /* ── Mobile sidebar toggle ── */

@@ -236,6 +236,7 @@ for _uid, _u in USERS.items():
     _u.setdefault('phone_verified', True)
     _u.setdefault('verification_code', None)
     _u.setdefault('reset_token', None)
+    _u.setdefault('account_status', 'active')  # seeded demo accounts are pre-approved
     # Hash any seed passwords that are still plaintext (idempotent — safe to run every startup;
     # werkzeug hashes always contain a ':' separating the algorithm from its parameters/salt,
     # which no plaintext demo password like "admin123" would ever contain).
@@ -931,15 +932,39 @@ def register_event(event_id):
         return redirect(url_for('events_page'))
     u = current_user()
     if request.method == 'POST':
-        flash(f"You've registered for {event['title']}! Check WhatsApp for details. 🎉", 'success')
+        # Already logged in (required for this route) — use the account's own
+        # name/email rather than re-trusting a form re-entry of them.
+        attendees = request.form.get('attendees', '1')
+        whatsapp  = request.form.get('whatsapp', u.get('phone',''))
+        flash(f"You're registered for {event['title']}, {u['name']}! Check WhatsApp for details. 🎉", 'success')
+        send_whatsapp(whatsapp, f"🙏 You're confirmed for {event['title']} on {event['date']}. See you there!")
         return redirect(url_for('events_page'))
     return render_template('event_register.html', event=event, user=u)
 
 @app.route('/register/student', methods=['GET', 'POST'])
 def register_student():
     u = current_user()
+    is_returning_parent = bool(u and u['role'] == 'parent')
+
+    # For a logged-in parent, pre-fill the Location section from their most
+    # recently enrolled child (if any) so they don't have to retype the same
+    # family address for a second or third child — still fully editable.
+    prefill = None
+    if is_returning_parent:
+        my_children = sorted(
+            [s for s in STUDENTS if s.get('parent1_email','').lower() == u['email'].lower()],
+            key=lambda s: s.get('registered_at',''), reverse=True)
+        if my_children:
+            prefill = my_children[0]
+
     if request.method == 'POST':
-        parent_email = request.form.get('parent1_email', '').strip().lower()
+        # A logged-in parent's own identity is never re-typed or trusted from the
+        # form — this both saves them re-entering it and guarantees the new child
+        # always links to their existing account rather than risking a mismatch.
+        if is_returning_parent:
+            parent_email = u['email']
+        else:
+            parent_email = request.form.get('parent1_email', '').strip().lower()
         password     = request.form.get('password', '')
         confirm      = request.form.get('confirm_password', '')
         level        = request.form.get('level')
@@ -952,7 +977,7 @@ def register_student():
         # Level 2 is not currently open for new registrations — never trust the client.
         if not LEVEL_REGISTRATION_OPEN.get(level, True):
             flash('Registration for that level is not currently open. Please choose a different level.', 'error')
-            return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
+            return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u, prefill=prefill, is_returning_parent=is_returning_parent)
 
         # The class day/time slot the parent picked, matched against what's actually
         # scheduled for this level+region — never trust a slot that wasn't offered.
@@ -964,18 +989,19 @@ def register_student():
                              for s in valid_slots)
         if valid_slots and not slot_is_valid:
             flash('Please select one of the available class times for this level.', 'error')
-            return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
+            return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u, prefill=prefill, is_returning_parent=is_returning_parent)
 
-        existing_account = next((u for u in USERS.values() if u['email'].lower() == parent_email), None)
+        existing_account = next((x for x in USERS.values() if x['email'].lower() == parent_email), None)
 
         # If no account exists yet for this email, a password is required to create one.
+        # (A logged-in parent always has existing_account set, so this never applies to them.)
         if not existing_account:
             if not password or len(password) < 6:
                 flash('Please set a password (min 6 characters) so you can log in and see updates about your child.', 'error')
-                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
+                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u, prefill=prefill, is_returning_parent=is_returning_parent)
             if password != confirm:
                 flash('Passwords do not match. Please try again.', 'error')
-                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
+                return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u, prefill=prefill, is_returning_parent=is_returning_parent)
 
         class_id = f"class-{level}-{region}"
         student = {
@@ -988,13 +1014,15 @@ def register_student():
             "region": region,
             "country": request.form.get('country'),
             "city": request.form.get('city'),
-            "address": request.form.get('address', ''),
+            "street_address": request.form.get('street_address', ''),
+            "apartment": request.form.get('apartment', ''),
+            "state": request.form.get('state', ''),
             "postal_code": request.form.get('postal_code', ''),
             "class_day": chosen_day,
             "class_time": chosen_time,
             "class_label": chosen_label,
-            "parent1_name": request.form.get('parent1_name'),
-            "parent1_whatsapp": request.form.get('parent1_whatsapp'),
+            "parent1_name": u['name'] if is_returning_parent else request.form.get('parent1_name'),
+            "parent1_whatsapp": u.get('phone','') if is_returning_parent else request.form.get('parent1_whatsapp'),
             "parent1_email": parent_email,
             "parent2_name": request.form.get('parent2_name', ''),
             "parent2_whatsapp": request.form.get('parent2_whatsapp', ''),
@@ -1027,20 +1055,26 @@ def register_student():
                 "phone_verified": False,
                 "verification_code": generate_verification_code(),
                 "reset_token": None,
+                # New self-registered accounts require a Super Admin or Regional
+                # Admin (for their region) to approve before they can log in.
+                "account_status": "pending",
             }
             USERS[parent_user['id']] = parent_user
             account_created = True
 
-        # Log the parent in immediately
-        session['user_id'] = parent_user['id']
-        session['user_role'] = parent_user['role']
-
-        if account_created:
-            flash(f"Welcome, {student['name']}! Your GJPP parent account was created — check your email to verify it. 🙏", 'success')
-            send_email(parent_user['email'], "Verify your GJPP account",
-                f"Welcome to GJPP, {parent_user['name']}!\n\nYour verification code is: {parent_user['verification_code']}\n\n"
-                f"Enter this code at {request.url_root.rstrip('/')}/verify/email to verify your account.")
+        if is_returning_parent:
+            flash(f"{student['name']} has been added to your account! 🙏", 'success')
+        elif account_created:
+            flash(f"{student['name']} is enrolled! Your new GJPP account for {parent_user['name']} is "
+                  f"awaiting approval from an administrator — you'll get an email as soon as you can log in. 🙏", 'success')
+            send_email(parent_user['email'], "Your GJPP account is pending approval",
+                f"Hi {parent_user['name']},\n\nThank you for enrolling {student['name']} in GJPP!\n\n"
+                f"Your account is currently awaiting approval from an administrator. "
+                f"You'll receive another email as soon as it's approved and you can log in.")
         else:
+            # Existing account, already approved previously — safe to log them straight in.
+            session['user_id'] = parent_user['id']
+            session['user_role'] = parent_user['role']
             flash(f"Welcome, {student['name']}! Your child has been added to your existing GJPP account. 🙏", 'success')
 
         if assigned_teacher:
@@ -1054,7 +1088,7 @@ def register_student():
             + (f" Assigned teacher: {assigned_teacher['name']}." if assigned_teacher else ""))
 
         return redirect(url_for('registration_success', type='student'))
-    return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u)
+    return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u, prefill=prefill, is_returning_parent=is_returning_parent)
 
 @app.route('/register/volunteer', methods=['GET', 'POST'])
 def register_volunteer():
@@ -1094,6 +1128,11 @@ def registration_success(type):
     }
     title, message, icon = messages.get(type, ('Success!', 'Your submission has been received.', '✅'))
     u = current_user()
+    if type == 'student' and not u:
+        # A brand-new parent account was created but is awaiting admin approval,
+        # so nobody is logged in yet — reflect that accurately on this page.
+        title = 'Enrollment Complete!'
+        message = 'Your child has been enrolled. Your new GJPP account is awaiting approval from an administrator — you\'ll get an email as soon as you can log in.'
     show_dashboard_cta = type == 'student' and u and u['role'] == 'parent'
     show_verify_cta = show_dashboard_cta and not is_fully_verified(u)
     return render_template('success.html', title=title, message=message, icon=icon, user=u,
@@ -1117,6 +1156,10 @@ def login_submit():
     user = next((u for u in USERS.values() if u['email'].lower() == email
                  and check_password_hash(u['password'], password)), None)
     if user:
+        if user.get('account_status', 'active') == 'pending':
+            flash('Your account is still awaiting approval from an administrator. '
+                  "You'll receive an email as soon as it's approved.", 'error')
+            return redirect(url_for('login'))
         session['user_id']   = user['id']
         session['user_role'] = user['role']
         flash(f"Welcome back, {user['name']}! 🙏", 'success')
@@ -1398,9 +1441,13 @@ def approve_location_request(req_id):
         # Apply the location change to the user
         uid = req['user_id']
         if uid in USERS:
-            USERS[uid]['region']  = req['new_region']
-            USERS[uid]['country'] = req['new_country']
-            USERS[uid]['city']    = req['new_city']
+            USERS[uid]['region']         = req['new_region']
+            USERS[uid]['country']        = req['new_country']
+            USERS[uid]['city']           = req['new_city']
+            USERS[uid]['street_address'] = req.get('new_street_address', '')
+            USERS[uid]['apartment']      = req.get('new_apartment', '')
+            USERS[uid]['state']          = req.get('new_state', '')
+            USERS[uid]['postal_code']    = req.get('new_postal_code', '')
         flash('Location request approved and applied.', 'success')
     return redirect(url_for('admin_location_requests'))
 
@@ -1414,6 +1461,83 @@ def reject_location_request(req_id):
         req['reviewed_at'] = datetime.now().isoformat()
         flash('Location request rejected.', 'success')
     return redirect(url_for('admin_location_requests'))
+
+# ─────────────────────────────────────────
+#  PENDING ACCOUNT APPROVAL (self-registered parent logins)
+# ─────────────────────────────────────────
+@app.route('/admin/pending-accounts')
+@login_required
+@role_required('admin')
+def admin_pending_accounts():
+    pending = [u for u in USERS.values() if u.get('account_status') == 'pending']
+    pending.sort(key=lambda u: u.get('created_at', ''), reverse=True)
+    child_counts = {u['id']: len([s for s in STUDENTS if s.get('parent1_email','').lower() == u['email'].lower()])
+                    for u in pending}
+    return render_template('admin/pending_accounts.html',
+        user=current_user(), pending=pending, child_counts=child_counts, scope='all')
+
+@app.route('/admin/pending-accounts/<uid>/approve', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_pending_account_approve(uid):
+    target = USERS.get(uid)
+    if target and target.get('account_status') == 'pending':
+        target['account_status'] = 'active'
+        flash(f"{target['name']}'s account has been approved.", 'success')
+        send_email(target['email'], "Your GJPP account has been approved",
+            f"Hi {target['name']},\n\nGreat news — your GJPP account has been approved! "
+            f"You can now log in at {request.url_root.rstrip('/')}/login.")
+    return redirect(url_for('admin_pending_accounts'))
+
+@app.route('/admin/pending-accounts/<uid>/reject', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_pending_account_reject(uid):
+    target = USERS.get(uid)
+    if target and target.get('account_status') == 'pending':
+        name = target['name']
+        del USERS[uid]
+        flash(f"{name}'s account request was rejected and removed. Any enrolled children's records were kept.", 'success')
+    return redirect(url_for('admin_pending_accounts'))
+
+@app.route('/radmin/pending-accounts')
+@login_required
+@role_required('regional_admin')
+def radmin_pending_accounts():
+    u = current_user()
+    pending = [x for x in USERS.values() if x.get('account_status') == 'pending' and x.get('region') == u['region']]
+    pending.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    child_counts = {x['id']: len([s for s in STUDENTS if s.get('parent1_email','').lower() == x['email'].lower()])
+                    for x in pending}
+    return render_template('admin/pending_accounts.html',
+        user=u, pending=pending, child_counts=child_counts, scope='region')
+
+@app.route('/radmin/pending-accounts/<uid>/approve', methods=['POST'])
+@login_required
+@role_required('regional_admin')
+def radmin_pending_account_approve(uid):
+    u = current_user()
+    target = USERS.get(uid)
+    # Never trust the client — a Regional Admin may only approve accounts in their own region.
+    if target and target.get('account_status') == 'pending' and target.get('region') == u['region']:
+        target['account_status'] = 'active'
+        flash(f"{target['name']}'s account has been approved.", 'success')
+        send_email(target['email'], "Your GJPP account has been approved",
+            f"Hi {target['name']},\n\nGreat news — your GJPP account has been approved! "
+            f"You can now log in at {request.url_root.rstrip('/')}/login.")
+    return redirect(url_for('radmin_pending_accounts'))
+
+@app.route('/radmin/pending-accounts/<uid>/reject', methods=['POST'])
+@login_required
+@role_required('regional_admin')
+def radmin_pending_account_reject(uid):
+    u = current_user()
+    target = USERS.get(uid)
+    if target and target.get('account_status') == 'pending' and target.get('region') == u['region']:
+        name = target['name']
+        del USERS[uid]
+        flash(f"{name}'s account request was rejected and removed. Any enrolled children's records were kept.", 'success')
+    return redirect(url_for('radmin_pending_accounts'))
 
 # ─────────────────────────────────────────
 #  TEACHER ROUTES
@@ -1494,9 +1618,17 @@ def request_location_update():
             "old_region":  u.get('region',''),
             "old_country": u.get('country',''),
             "old_city":    u.get('city',''),
+            "old_street_address": u.get('street_address',''),
+            "old_apartment":      u.get('apartment',''),
+            "old_state":          u.get('state',''),
+            "old_postal_code":    u.get('postal_code',''),
             "new_region":  request.form.get('region'),
             "new_country": request.form.get('country'),
             "new_city":    request.form.get('city'),
+            "new_street_address": request.form.get('street_address',''),
+            "new_apartment":      request.form.get('apartment',''),
+            "new_state":          request.form.get('state',''),
+            "new_postal_code":    request.form.get('postal_code',''),
             "reason":      request.form.get('reason',''),
             "status":      "pending",
             "submitted_at": datetime.now().isoformat(),
@@ -1995,7 +2127,9 @@ def admin_student_new():
             "region":         request.form.get('region'),
             "country":        request.form.get('country'),
             "city":           request.form.get('city'),
-            "address":        request.form.get('address', ''),
+            "street_address": request.form.get('street_address', ''),
+            "apartment":      request.form.get('apartment', ''),
+            "state":          request.form.get('state', ''),
             "postal_code":    request.form.get('postal_code', ''),
             "parent1_name":   request.form.get('parent1_name'),
             "parent1_email":  parent_email,
@@ -2037,7 +2171,9 @@ def admin_student_edit(sid):
         student['region']           = request.form.get('region')
         student['country']          = request.form.get('country')
         student['city']             = request.form.get('city')
-        student['address']          = request.form.get('address', '')
+        student['street_address']   = request.form.get('street_address', '')
+        student['apartment']        = request.form.get('apartment', '')
+        student['state']            = request.form.get('state', '')
         student['postal_code']      = request.form.get('postal_code', '')
         student['parent1_name']     = request.form.get('parent1_name')
         student['parent1_email']    = request.form.get('parent1_email','').strip().lower()
@@ -2980,12 +3116,20 @@ def api_class_times(region_id, level_id):
 @app.route('/api/stats')
 def api_stats():
     pending = len([r for r in LOCATION_REQUESTS if r['status']=='pending'])
+    pending_accounts_all = len([u for u in USERS.values() if u.get('account_status') == 'pending'])
+    u = current_user()
+    pending_accounts_region = 0
+    if u and u['role'] == 'regional_admin':
+        pending_accounts_region = len([x for x in USERS.values()
+                                        if x.get('account_status') == 'pending' and x.get('region') == u['region']])
     return jsonify({
         "students":        len(STUDENTS),
         "regions":         len(REGIONS),
         "pathshalas":      42,
         "volunteers":      len(VOLUNTEERS),
         "pending_requests": pending,
+        "pending_accounts": pending_accounts_all,
+        "pending_accounts_region": pending_accounts_region,
     })
 
 # ─────────────────────────────────────────

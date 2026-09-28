@@ -28,10 +28,16 @@
     </div>
     <div class="form-body">
       <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.6;margin-bottom:1.25rem;">{{ event.description }}</p>
+      <div style="display:flex;align-items:center;gap:0.6rem;background:var(--blue-light);border-radius:9px;padding:0.85rem 0.95rem;margin-bottom:1.25rem;">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--jain-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:800;flex-shrink:0;">{{ user.name[0].upper() }}</div>
+        <div>
+          <div style="font-weight:700;color:var(--jain-blue);">{{ user.name }}</div>
+          <div style="font-size:0.78rem;color:var(--text-mid);">{{ user.email }}</div>
+        </div>
+        <span style="margin-left:auto;font-size:0.72rem;font-weight:600;color:var(--text-muted);">🔒 Your account</span>
+      </div>
       <form method="POST">
-        <div class="form-group"><label class="form-label">Your Name <span>*</span></label><input type="text" name="name" class="form-input" required placeholder="Full name"></div>
-        <div class="form-group"><label class="form-label">Email <span>*</span></label><input type="email" name="email" class="form-input" required placeholder="your@email.com"></div>
-        <div class="form-group"><label class="form-label">WhatsApp Number</label><input type="tel" name="whatsapp" class="form-input" placeholder="+1 555 000 0000"></div>
+        <div class="form-group"><label class="form-label">WhatsApp Number <span style="color:var(--text-muted);font-weight:400;">(for event-day updates)</span></label><input type="tel" name="whatsapp" class="form-input" placeholder="+1 555 000 0000" value="{{ user.phone or '' }}"></div>
         <div class="form-group">
           <label class="form-label">Number of Attendees</label>
           <select name="attendees" class="form-select"><option>1</option><option>2</option><option>3</option><option>4</option><option>5+</option></select>

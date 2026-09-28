@@ -56,7 +56,17 @@
         <p class="event-desc">{{ event.description }}</p>
       </div>
       <div class="event-foot">
+        {% if event.id in my_registered_event_ids %}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.6rem;flex-wrap:wrap;">
+          <span style="font-size:0.82rem;font-weight:700;color:var(--green-dark);">✅ You are already registered for this event</span>
+          <form method="POST" action="/events/{{ event.id }}/unregister" onsubmit="return confirm('Un-register from this event?')">
+            <input type="hidden" name="next" value="/events">
+            <button type="submit" class="btn btn-outline-blue btn-sm">Un-register</button>
+          </form>
+        </div>
+        {% else %}
         <a href="/events/{{ event.id }}/register" class="btn btn-red btn-sm btn-block">Register →</a>
+        {% endif %}
       </div>
     </div>
     {% endfor %}

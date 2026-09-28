@@ -40,7 +40,8 @@
           </div>
           <div class="event-desc">{{ e.description }}</div>
         </div>
-        <div class="event-actions">
+        <div class="event-actions" style="flex-wrap:wrap;">
+          <a href="/admin/events/{{ e.id }}/attendees" class="btn btn-green" style="font-size:0.8rem;padding:0.4rem 0.9rem;flex:1 1 100%;justify-content:center;">👥 Attendees ({{ reg_counts.get(e.id, 0) }})</a>
           <a href="/admin/events/{{ e.id }}/edit" class="btn btn-blue" style="font-size:0.8rem;padding:0.4rem 0.9rem;flex:1;justify-content:center;">✏️ Edit</a>
           <form method="POST" action="/admin/events/{{ e.id }}/delete" onsubmit="return confirm('Delete \'{{ e.title }}\'?')">
             <button type="submit" class="btn btn-red" style="font-size:0.8rem;padding:0.4rem 0.9rem;">🗑 Delete</button>

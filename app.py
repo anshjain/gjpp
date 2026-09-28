@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, abort, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, abort, send_from_directory, Response
 from datetime import datetime, date, timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 import uuid
 import os
 import json
+import csv
+import io
 import smtplib
 import logging
 from email.mime.text import MIMEText
@@ -264,6 +266,11 @@ EVENTS = [
     {"id": "e-3", "title": "Bhawna Yog Session",      "date": "2025-05-10", "type": "Wellness",  "region": "global",        "description": "Monthly guided meditation and contemplation",               "created_by": "u-admin-1"},
     {"id": "e-4", "title": "Teacher Training Workshop","date": "2025-05-25", "type": "Workshop", "region": "uk",            "description": "Volunteer teacher certification program",                   "created_by": "u-admin-1"},
 ]
+
+# Event registrations store — one record per (event, user) sign-up.
+# Powers the attendee pages for Admin / Regional Admin / Teacher and the
+# "already registered" / "un-register" behaviour on the public events pages.
+EVENT_REGISTRATIONS = []
 
 # Location update requests store
 LOCATION_REQUESTS = []
@@ -741,6 +748,7 @@ _TABLE_SPECS = {
     'users':                  (USERS, 'dict', 'id'),
     'students':                (STUDENTS, 'list', 'id'),
     'events':                  (EVENTS, 'list', 'id'),
+    'event_registrations':     (EVENT_REGISTRATIONS, 'list', 'id'),
     'location_requests':       (LOCATION_REQUESTS, 'list', 'id'),
     'study_materials':         (STUDY_MATERIALS, 'list', 'id'),
     'promotions':               (PROMOTIONS, 'list', 'id'),
@@ -923,23 +931,163 @@ def events_page():
         visible = EVENTS
     return render_template('events.html', events=visible, user=u)
 
+# ─────────────────────────────────────────
+#  EVENT REGISTRATION HELPERS
+# ─────────────────────────────────────────
+ATTENDEE_CHOICES = ('1', '2', '3', '4', '5+')
+
+def find_event(event_id):
+    return next((e for e in EVENTS if e['id'] == event_id), None)
+
+def get_event_registration(event_id, user_id):
+    return next((r for r in EVENT_REGISTRATIONS
+                 if r['event_id'] == event_id and r['user_id'] == user_id), None)
+
+def user_can_see_event(u, event):
+    """Super admins see every event; everyone else sees global + their own region."""
+    return u['role'] == 'admin' or event['region'] in ('global', u.get('region', ''))
+
+def _registration_row(reg):
+    """Registration record enriched with the user's *current* name/email/location
+    (falls back to the sign-up snapshot if the account no longer exists)."""
+    row = dict(reg)
+    live = USERS.get(reg['user_id'])
+    if live:
+        row.update(name=live.get('name', row.get('name')), email=live.get('email', row.get('email')),
+                   region=live.get('region', row.get('region')), city=live.get('city', row.get('city')),
+                   country=live.get('country', row.get('country')), role=live.get('role', row.get('role')))
+    row['headcount'] = int(str(row.get('attendees', '1')).rstrip('+') or 1)
+    return row
+
+def attendees_for_viewer(event, viewer):
+    """Registrations for an event that this viewer is allowed to see.
+    Super admins see everyone; regional admins and teachers see only people in their own region
+    (which matters for 'global' events that people from every region can join)."""
+    rows = [_registration_row(r) for r in EVENT_REGISTRATIONS if r['event_id'] == event['id']]
+    if viewer['role'] != 'admin':
+        rows = [r for r in rows if r.get('region') == viewer.get('region')]
+    return sorted(rows, key=lambda r: r.get('registered_at', ''))
+
+def registration_counts_for_viewer(events, viewer):
+    return {e['id']: len(attendees_for_viewer(e, viewer)) for e in events}
+
+def _safe_next(default_endpoint='events_page'):
+    nxt = request.form.get('next', '')
+    if nxt.startswith('/') and not nxt.startswith('//'):
+        return nxt
+    return url_for(default_endpoint)
+
+@app.context_processor
+def inject_event_registrations():
+    """Makes `my_registered_event_ids` available in every template so any page that lists
+    events can swap the Register button for the 'already registered' state."""
+    u = current_user()
+    ids = {r['event_id'] for r in EVENT_REGISTRATIONS if r['user_id'] == u['id']} if u else set()
+    return {'my_registered_event_ids': ids}
+
+def _csv_safe(value):
+    """Neutralise spreadsheet formula injection in exported cells."""
+    v = '' if value is None else str(value)
+    return "'" + v if v[:1] in ('=', '+', '-', '@', '\t', '\r') else v
+
+ROLE_LABELS = {'admin': 'Super Admin', 'regional_admin': 'Regional Admin', 'teacher': 'Teacher', 'parent': 'Parent'}
+
+def event_attendees_response(event_id, back_endpoint, view_endpoint):
+    """Shared implementation behind the admin / regional-admin / teacher attendee pages."""
+    u = current_user()
+    event = find_event(event_id)
+    if not event or not user_can_see_event(u, event):
+        flash('Event not found or not available to you.', 'error')
+        return redirect(url_for(back_endpoint))
+
+    rows = attendees_for_viewer(event, u)
+    total_registrations = len(rows)
+
+    q = request.args.get('q', '').strip().lower()
+    region_filter = request.args.get('region', '').strip() if u['role'] == 'admin' else ''
+    if q:
+        rows = [r for r in rows if q in (r.get('name') or '').lower()
+                or q in (r.get('email') or '').lower()
+                or q in (r.get('city') or '').lower()]
+    if region_filter:
+        rows = [r for r in rows if r.get('region') == region_filter]
+
+    if request.args.get('export') == 'csv':
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(['Name', 'Email', 'WhatsApp', 'Role', 'Region', 'City', 'Country',
+                    'Attendees', 'Registered at'])
+        for r in rows:
+            w.writerow([_csv_safe(x) for x in (
+                r.get('name'), r.get('email'), r.get('whatsapp'), ROLE_LABELS.get(r.get('role'), r.get('role')),
+                region_label(r.get('region')), r.get('city'), r.get('country'),
+                r.get('attendees'), r.get('registered_at'))])
+        safe_title = ''.join(c if c.isalnum() else '_' for c in event['title']).strip('_') or 'event'
+        return Response(buf.getvalue(), mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename=attendees_{safe_title}.csv'})
+
+    return render_template('event_attendees.html', user=u, event=event, rows=rows,
+        total_registrations=total_registrations,
+        total_headcount=sum(r['headcount'] for r in rows),
+        has_open_ended=any(str(r.get('attendees')).endswith('+') for r in rows),
+        q=q, region_filter=region_filter, regions=REGIONS, role_labels=ROLE_LABELS,
+        back_url=url_for(back_endpoint), view_endpoint=view_endpoint,
+        is_admin=(u['role'] == 'admin'))
+
 @app.route('/events/<event_id>/register', methods=['GET', 'POST'])
 @login_required
 def register_event(event_id):
-    event = next((e for e in EVENTS if e['id'] == event_id), None)
+    event = find_event(event_id)
     if not event:
         flash('Event not found', 'error')
         return redirect(url_for('events_page'))
     u = current_user()
+    if not user_can_see_event(u, event):
+        flash('That event is not available for your region.', 'error')
+        return redirect(url_for('events_page'))
+    # Already signed up? Never create a duplicate — just tell the user.
+    if get_event_registration(event_id, u['id']):
+        flash(f"You are already registered for {event['title']}.", 'success')
+        return redirect(url_for('events_page'))
     if request.method == 'POST':
         # Already logged in (required for this route) — use the account's own
         # name/email rather than re-trusting a form re-entry of them.
         attendees = request.form.get('attendees', '1')
-        whatsapp  = request.form.get('whatsapp', u.get('phone',''))
+        if attendees not in ATTENDEE_CHOICES:
+            attendees = '1'
+        whatsapp  = (request.form.get('whatsapp') or u.get('phone', '') or '').strip()[:40]
+        EVENT_REGISTRATIONS.append({
+            "id":            f"er-{uuid.uuid4().hex[:10]}",
+            "event_id":      event_id,
+            "user_id":       u['id'],
+            "name":          u['name'],
+            "email":         u['email'],
+            "role":          u['role'],
+            "region":        u.get('region', ''),
+            "city":          u.get('city', ''),
+            "country":       u.get('country', ''),
+            "whatsapp":      whatsapp,
+            "attendees":     attendees,
+            "registered_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+        })
         flash(f"You're registered for {event['title']}, {u['name']}! Check WhatsApp for details. 🎉", 'success')
         send_whatsapp(whatsapp, f"🙏 You're confirmed for {event['title']} on {event['date']}. See you there!")
         return redirect(url_for('events_page'))
     return render_template('event_register.html', event=event, user=u)
+
+@app.route('/events/<event_id>/unregister', methods=['POST'])
+@login_required
+def unregister_event(event_id):
+    u = current_user()
+    event = find_event(event_id)
+    reg = get_event_registration(event_id, u['id'])
+    if reg:
+        EVENT_REGISTRATIONS.remove(reg)
+        title = event['title'] if event else 'the event'
+        flash(f"You have been un-registered from {title}. You can register again any time.", 'success')
+    else:
+        flash('You are not registered for that event.', 'error')
+    return redirect(_safe_next())
 
 @app.route('/register/student', methods=['GET', 'POST'])
 def register_student():
@@ -1370,7 +1518,15 @@ def admin_students():
 @login_required
 @role_required('admin')
 def admin_events():
-    return render_template('admin/events.html', user=current_user(), events=EVENTS, regions=REGIONS)
+    u = current_user()
+    return render_template('admin/events.html', user=u, events=EVENTS, regions=REGIONS,
+                           reg_counts=registration_counts_for_viewer(EVENTS, u))
+
+@app.route('/admin/events/<event_id>/attendees')
+@login_required
+@role_required('admin')
+def admin_event_attendees(event_id):
+    return event_attendees_response(event_id, 'admin_events', 'admin_event_attendees')
 
 @app.route('/admin/events/new', methods=['GET','POST'])
 @login_required
@@ -1413,10 +1569,11 @@ def admin_event_edit(event_id):
 @login_required
 @role_required('admin')
 def admin_event_delete(event_id):
-    global EVENTS
     event = next((e for e in EVENTS if e['id'] == event_id), None)
     if event:
-        EVENTS = [e for e in EVENTS if e['id'] != event_id]
+        # In-place so the persistence layer keeps pointing at the same list object
+        EVENTS[:] = [e for e in EVENTS if e['id'] != event_id]
+        EVENT_REGISTRATIONS[:] = [r for r in EVENT_REGISTRATIONS if r['event_id'] != event_id]
         flash(f"Event '{event['title']}' deleted.", 'success')
     return redirect(url_for('admin_events'))
 
@@ -1566,6 +1723,22 @@ def teacher_dashboard():
         events=my_events, pending_req=pending_req,
         levels=LEVELS, all_students=STUDENTS, upcoming_birthdays=upcoming_birthdays,
     )
+
+@app.route('/teacher/events')
+@login_required
+@role_required('teacher')
+def teacher_events():
+    u = current_user()
+    events = [e for e in EVENTS if e['region'] in ('global', u.get('region', ''))]
+    region = next((r for r in REGIONS if r['id'] == u.get('region')), None)
+    return render_template('teacher/events.html', user=u, events=events, region=region,
+                           reg_counts=registration_counts_for_viewer(events, u))
+
+@app.route('/teacher/events/<event_id>/attendees')
+@login_required
+@role_required('teacher')
+def teacher_event_attendees(event_id):
+    return event_attendees_response(event_id, 'teacher_events', 'teacher_event_attendees')
 
 @app.route('/teacher/send-birthday-message/<student_id>', methods=['POST'])
 @login_required
@@ -2249,7 +2422,14 @@ def radmin_events():
     u = current_user()
     events = [e for e in EVENTS if e['region'] in ('global', u['region'])]
     region = next((r for r in REGIONS if r['id'] == u['region']), None)
-    return render_template('radmin/events.html', user=u, events=events, region=region, regions=REGIONS)
+    return render_template('radmin/events.html', user=u, events=events, region=region, regions=REGIONS,
+                           reg_counts=registration_counts_for_viewer(events, u))
+
+@app.route('/radmin/events/<event_id>/attendees')
+@login_required
+@role_required('regional_admin')
+def radmin_event_attendees(event_id):
+    return event_attendees_response(event_id, 'radmin_events', 'radmin_event_attendees')
 
 @app.route('/radmin/events/new', methods=['GET','POST'])
 @login_required
@@ -2295,11 +2475,11 @@ def radmin_event_edit(event_id):
 @login_required
 @role_required('regional_admin')
 def radmin_event_delete(event_id):
-    global EVENTS
     u = current_user()
     event = next((e for e in EVENTS if e['id'] == event_id and e['region'] == u['region']), None)
     if event:
-        EVENTS = [e for e in EVENTS if e['id'] != event_id]
+        EVENTS[:] = [e for e in EVENTS if e['id'] != event_id]
+        EVENT_REGISTRATIONS[:] = [r for r in EVENT_REGISTRATIONS if r['event_id'] != event_id]
         flash(f"Event deleted.", 'success')
     return redirect(url_for('radmin_events'))
 

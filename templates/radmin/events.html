@@ -21,7 +21,11 @@
         <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.5;">{{ e.description }}</p>
       </div>
       <div class="ev-foot" style="flex-wrap:wrap;">
+        {% if event_is_past(e) %}
+        <span style="font-size:0.75rem;font-weight:700;color:var(--text-muted);padding:0.35rem 0;">⏹ Ended · attendee list cleared</span>
+        {% else %}
         <a href="/radmin/events/{{ e.id }}/attendees" class="btn btn-green" style="font-size:0.78rem;padding:0.35rem 0.8rem;">👥 Attendees ({{ reg_counts.get(e.id, 0) }})</a>
+        {% endif %}
         {% if e.region != 'global' %}
         <a href="/radmin/events/{{ e.id }}/edit" class="btn btn-blue" style="font-size:0.78rem;padding:0.35rem 0.8rem;">✏️ Edit</a>
         <form method="POST" action="/radmin/events/{{ e.id }}/delete" onsubmit="return confirm('Delete this event?')">

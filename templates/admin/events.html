@@ -41,7 +41,11 @@
           <div class="event-desc">{{ e.description }}</div>
         </div>
         <div class="event-actions" style="flex-wrap:wrap;">
+          {% if event_is_past(e) %}
+          <div style="flex:1 1 100%;text-align:center;font-size:0.78rem;font-weight:700;color:var(--text-muted);padding:0.3rem 0;">⏹ Event ended · attendee list cleared</div>
+          {% else %}
           <a href="/admin/events/{{ e.id }}/attendees" class="btn btn-green" style="font-size:0.8rem;padding:0.4rem 0.9rem;flex:1 1 100%;justify-content:center;">👥 Attendees ({{ reg_counts.get(e.id, 0) }})</a>
+          {% endif %}
           <a href="/admin/events/{{ e.id }}/edit" class="btn btn-blue" style="font-size:0.8rem;padding:0.4rem 0.9rem;flex:1;justify-content:center;">✏️ Edit</a>
           <form method="POST" action="/admin/events/{{ e.id }}/delete" onsubmit="return confirm('Delete \'{{ e.title }}\'?')">
             <button type="submit" class="btn btn-red" style="font-size:0.8rem;padding:0.4rem 0.9rem;">🗑 Delete</button>

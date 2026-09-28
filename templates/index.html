@@ -281,7 +281,11 @@
             <div class="event-date">📅 {{ event.date }}</div>
             <p class="event-desc">{{ event.description }}</p>
             <div style="margin-top:1.25rem;">
+                {% if event_is_past(event) %}
+                <span style="font-size:0.82rem;font-weight:700;opacity:0.6;">⏹ Event ended · registration closed</span>
+                {% else %}
                 <a href="/events/{{ event.id }}/register" class="btn btn-red" style="font-size:0.82rem;padding:0.5rem 1rem;">Register →</a>
+                {% endif %}
             </div>
         </div>
         {% endfor %}

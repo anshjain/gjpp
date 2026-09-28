@@ -29,8 +29,12 @@
         <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.5;">{{ e.description }}</p>
       </div>
       <div class="ev-foot">
+        {% if event_is_past(e) %}
+        <span style="font-size:0.8rem;font-weight:700;color:var(--text-muted);">⏹ Event ended · attendee list cleared</span>
+        {% else %}
         <span style="font-size:0.8rem;font-weight:700;color:var(--jain-blue);">👥 {{ n }} registered</span>
         <a href="/teacher/events/{{ e.id }}/attendees" class="btn btn-green btn-sm">View Attendees →</a>
+        {% endif %}
       </div>
     </div>
     {% endfor %}

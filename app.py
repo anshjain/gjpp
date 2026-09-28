@@ -939,6 +939,33 @@ ATTENDEE_CHOICES = ('1', '2', '3', '4', '5+')
 def find_event(event_id):
     return next((e for e in EVENTS if e['id'] == event_id), None)
 
+def event_is_past(event):
+    """True once the event's date is before today. The event day itself still counts as upcoming,
+    so registration and the attendee list stay available through the whole event day.
+    An event with a missing/unparseable date is treated as upcoming (never silently wiped)."""
+    try:
+        return date.fromisoformat(str(event.get('date', ''))[:10]) < date.today()
+    except (ValueError, TypeError):
+        return False
+
+def purge_past_event_registrations():
+    """Clear the attendee list of every event that is over. Returns how many records were removed."""
+    past_ids = {e['id'] for e in EVENTS if event_is_past(e)}
+    if not past_ids:
+        return 0
+    before = len(EVENT_REGISTRATIONS)
+    EVENT_REGISTRATIONS[:] = [r for r in EVENT_REGISTRATIONS if r['event_id'] not in past_ids]
+    return before - len(EVENT_REGISTRATIONS)
+
+app.jinja_env.globals['event_is_past'] = event_is_past
+
+@app.before_request
+def _clear_registrations_of_finished_events():
+    # Runs on every request, so the cleanup happens the first time anyone loads the site
+    # after midnight — no scheduler/cron needed. Only writes to the DB if something was removed.
+    if request.endpoint != 'static' and purge_past_event_registrations():
+        save_data()
+
 def get_event_registration(event_id, user_id):
     return next((r for r in EVENT_REGISTRATIONS
                  if r['event_id'] == event_id and r['user_id'] == user_id), None)
@@ -999,6 +1026,9 @@ def event_attendees_response(event_id, back_endpoint, view_endpoint):
     if not event or not user_can_see_event(u, event):
         flash('Event not found or not available to you.', 'error')
         return redirect(url_for(back_endpoint))
+    if event_is_past(event):
+        flash(f"{event['title']} is over — its attendee list has been cleared and is no longer available.", 'error')
+        return redirect(url_for(back_endpoint))
 
     rows = attendees_for_viewer(event, u)
     total_registrations = len(rows)
@@ -1044,6 +1074,9 @@ def register_event(event_id):
     u = current_user()
     if not user_can_see_event(u, event):
         flash('That event is not available for your region.', 'error')
+        return redirect(url_for('events_page'))
+    if event_is_past(event):
+        flash(f"{event['title']} has already taken place — registration is closed.", 'error')
         return redirect(url_for('events_page'))
     # Already signed up? Never create a duplicate — just tell the user.
     if get_event_registration(event_id, u['id']):

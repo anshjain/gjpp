@@ -5,6 +5,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import uuid
 import os
+import hmac
+import secrets
+import threading
 import json
 import csv
 import io
@@ -75,6 +78,17 @@ def send_email(to_address, subject, body):
     except Exception as e:
         logging.error(f"Failed to send email to {to_address}: {e}")
         return False
+
+def send_emails_async(messages):
+    """Send many emails (list of (to, subject, body)) on a background thread so a bulk
+    action (e.g. approving hundreds of accounts) never blocks or times out the request."""
+    messages = [m for m in messages if m and m[0]]
+    if not messages:
+        return
+    def _worker():
+        for to_address, subject, body in messages:
+            send_email(to_address, subject, body)
+    threading.Thread(target=_worker, daemon=True).start()
 
 def send_whatsapp(to_phone, message):
     """Send a real WhatsApp message via Twilio. No-ops with a log warning if not configured."""
@@ -433,34 +447,81 @@ def get_level_schedule_info(region_id, level_id):
 #     as distinct from the weekly *study curriculum* schedule above. Same two-tier
 #     pattern: a Super Admin sets one global default per level; a Regional Admin
 #     can override the slots for their own region + level independently.
+# Class schedule for 2026-27, taken from the "Zoom Schedule 2026-2027" sheet.
+# The sheet lists every time in US Eastern, so each slot says "ET" explicitly —
+# families in India / UK / Australia then see exactly which timezone is meant.
+# (Regional Admins can still override a level with local times for their region.)
+CLASS_SCHEDULE_VERSION = "2026-27-zoom-v1"
+CLASS_SCHEDULE_2026_27 = {
+    "beginner": [   # ages 3-6  (sheet: "3-6" classes and Hindi Level 0)
+        {"day": "Monday",    "time": "7:15 PM ET",  "label": "Hindi"},
+        {"day": "Wednesday", "time": "7:00 PM ET",  "label": ""},
+        {"day": "Thursday",  "time": "6:30 PM ET",  "label": ""},
+        {"day": "Saturday",  "time": "10:00 AM ET", "label": ""},
+        {"day": "Saturday",  "time": "11:30 AM ET", "label": "Hindi"},
+    ],
+    "level1": [     # sheet: Level 1 (ages 6-12) and Hindi Level 1
+        {"day": "Monday",    "time": "8:00 PM ET",  "label": "Hindi"},
+        {"day": "Wednesday", "time": "8:00 PM ET",  "label": "Basics"},
+        {"day": "Thursday",  "time": "7:00 PM ET",  "label": ""},
+        {"day": "Thursday",  "time": "8:00 PM ET",  "label": "Shanti Path"},
+        {"day": "Friday",    "time": "8:00 PM ET",  "label": "Ages 12+"},
+        {"day": "Saturday",  "time": "11:00 AM ET", "label": ""},
+        {"day": "Saturday",  "time": "12:05 PM ET", "label": "Hindi"},
+    ],
+    "level2": [     # sheet: Level 2 and Hindi Level 2
+        {"day": "Tuesday",   "time": "7:15 PM ET",  "label": "Hindi"},
+        {"day": "Thursday",  "time": "7:00 PM ET",  "label": ""},
+        {"day": "Saturday",  "time": "11:00 AM ET", "label": ""},
+        {"day": "Saturday",  "time": "12:45 PM ET", "label": "Hindi"},
+    ],
+    "level3": [     # sheet: Level 3 and above, incl. Hindi Levels 3, 3&4, 4&5
+        {"day": "Tuesday",   "time": "8:00 PM ET",  "label": "Hindi"},
+        {"day": "Tuesday",   "time": "8:30 PM ET",  "label": "Hindi - Levels 4 & 5"},
+        {"day": "Wednesday", "time": "8:00 PM ET",  "label": "Bhaktamar Ji"},
+        {"day": "Thursday",  "time": "5:30 PM ET",  "label": ""},
+        {"day": "Saturday",  "time": "1:20 PM ET",  "label": "Hindi - Levels 3 & 4"},
+        {"day": "Sunday",    "time": "12:00 PM ET", "label": "Ages 8-12"},
+        {"day": "Sunday",    "time": "8:00 PM ET",  "label": "Ages 13-18"},
+        {"day": "Sunday",    "time": "8:00 PM ET",  "label": "Bhaktamar Ji"},
+        {"day": "Sunday",    "time": "8:15 PM ET",  "label": "Chahdhala (12+)"},
+    ],
+    "adult": [
+        {"day": "Monday",    "time": "8:00 PM ET",  "label": "Ishtopdesh"},
+        {"day": "Tuesday",   "time": "8:00 PM ET",  "label": "Adult Chahdhala"},
+    ],
+}
+
 GLOBAL_CLASS_TIMES = {
-    "beginner": {"level_id": "beginner", "slots": [
-        {"day": "Wednesday", "time": "7:00 PM",  "label": ""},
-        {"day": "Thursday",  "time": "6:30 PM",  "label": ""},
-        {"day": "Saturday",  "time": "10:00 AM", "label": ""},
-    ]},
-    "level1": {"level_id": "level1", "slots": [
-        {"day": "Thursday", "time": "7:00 PM",  "label": ""},
-        {"day": "Saturday", "time": "11:00 AM", "label": ""},
-        {"day": "Wednesday","time": "7:00 PM",  "label": "Bhawna Yog & Stuti"},
-    ]},
-    "level2": {"level_id": "level2", "slots": [
-        {"day": "Thursday", "time": "7:00 PM",  "label": ""},
-        {"day": "Saturday", "time": "11:00 AM", "label": ""},
-    ]},
-    "level3": {"level_id": "level3", "slots": [
-        {"day": "Sunday",   "time": "11:00 AM", "label": "Bhaktamar Ji"},
-        {"day": "Thursday", "time": "8:00 PM",  "label": "Chahdhala"},
-    ]},
-    "adult": {"level_id": "adult", "slots": [
-        {"day": "Sunday", "time": "8:00 PM", "label": "12+ Years — Level 1 & 2"},
-        {"day": "Monday", "time": "8:00 PM", "label": "18+ Dravya Sangrah"},
-    ]},
+    level_id: {"level_id": level_id, "slots": [dict(sl) for sl in slots]}
+    for level_id, slots in CLASS_SCHEDULE_2026_27.items()
 }
 
 # Registrations are not currently accepted for Level 2 (it shares Level 1's
 # class time but isn't open for new enrollment yet).
 LEVEL_REGISTRATION_OPEN = {"beginner": True, "level1": True, "level2": False, "level3": True, "adult": True}
+
+# Small key/value store for admin-controlled switches (persisted in its own table).
+SETTINGS = {
+    "parent_approval": {"key": "parent_approval", "value": "manual"},
+}
+
+def get_setting(key, default=None):
+    rec = SETTINGS.get(key)
+    return rec['value'] if rec else default
+
+def set_setting(key, value):
+    SETTINGS[key] = {"key": key, "value": value}
+
+# How new self-registered parent accounts get approved:
+#   manual         - an admin approves each one (original behaviour)
+#   email_verified - the parent clicks a link we email them; that proves the address is real
+#   auto           - approved instantly (no gate)
+APPROVAL_MODES = {
+    "manual":         "Manual — an admin approves every new account",
+    "email_verified": "Automatic once the parent confirms their email (recommended)",
+    "auto":           "Automatic immediately — no approval step",
+}
 
 REGION_CLASS_TIMES = {}
 # keyed by "<region_id>:<level_id>" -> {region_id, level_id, slots: [...]} (only present when overridden)
@@ -585,6 +646,55 @@ def role_required(*roles):
         return decorated
     return decorator
 
+# ── Multi-role accounts ──
+ROLE_PRIORITY = ('admin', 'regional_admin', 'teacher', 'parent')
+
+def user_roles(u):
+    """All roles this account holds (falls back to the single legacy role)."""
+    if not u:
+        return []
+    roles = u.get('roles') or [u.get('role')]
+    return [r for r in roles if r]
+
+def has_role(u, role):
+    return role in user_roles(u)
+
+def grant_role(u, role):
+    roles = user_roles(u)
+    if role not in roles:
+        roles.append(role)
+    u['roles'] = roles
+    if u.get('account_status') == 'pending':
+        u['account_status'] = 'active'   # an admin explicitly adding a role implies approval
+
+def revoke_role(uid, role):
+    """Take one role away from an account. If it was the only role the whole account is
+    deleted (original behaviour). Returns 'removed_role' or 'deleted_account'."""
+    u = USERS.get(uid)
+    roles = [r for r in user_roles(u) if r != role]
+    if not roles:
+        del USERS[uid]
+        return 'deleted_account'
+    u['roles'] = roles
+    if u.get('role') == role:
+        u['role'] = next(r for r in ROLE_PRIORITY if r in roles)
+    if role == 'teacher':
+        u['class_id'] = None
+    return 'removed_role'
+
+def find_user_by_email(email):
+    email = (email or '').strip().lower()
+    return next((x for x in USERS.values() if x['email'].lower() == email), None)
+
+def change_user_email(u, new_email):
+    """Change a login email and keep any children linked to the old parent email."""
+    old = u['email']
+    u['email'] = new_email
+    if old.lower() != new_email.lower():
+        for st in STUDENTS:
+            if st.get('parent1_email', '').lower() == old.lower():
+                st['parent1_email'] = new_email
+
 def is_super_admin():
     u = current_user()
     return u and u['role'] == 'admin'
@@ -599,13 +709,15 @@ def get_allowed_levels(user):
         return set()
     if user['role'] in ('admin', 'regional_admin'):
         return None
-    if user['role'] == 'teacher':
+    levels = set()
+    if has_role(user, 'teacher'):
         cid = user.get('class_id') or ''
         parts = cid.split('-')
-        return {parts[1]} if len(parts) > 1 else set()
-    if user['role'] == 'parent':
-        return {s['level'] for s in STUDENTS if s.get('parent1_email', '').lower() == user['email'].lower()}
-    return set()
+        if len(parts) > 1:
+            levels.add(parts[1])
+    if has_role(user, 'parent'):
+        levels |= {s['level'] for s in STUDENTS if s.get('parent1_email', '').lower() == user['email'].lower()}
+    return levels
 
 def user_can_see_material(material, user):
     """Check if user can access a study material — scoped by region AND class level."""
@@ -679,7 +791,7 @@ def find_teacher_for_class(class_id, class_day=None):
     teacher record carries one); falls back to any teacher already
     assigned to that class_id.
     """
-    candidates = [u for u in USERS.values() if u['role'] == 'teacher' and u.get('class_id') == class_id]
+    candidates = [u for u in USERS.values() if has_role(u, 'teacher') and u.get('class_id') == class_id]
     if not candidates:
         return None
     if class_day:
@@ -693,11 +805,13 @@ def region_label(region_id):
     return r['name'] if r else region_id.replace('_', ' ').title()
 
 app.jinja_env.globals['current_user'] = current_user
+app.jinja_env.globals['user_roles'] = user_roles
+app.jinja_env.globals['has_role'] = has_role
 app.jinja_env.globals['region_label'] = region_label
 
 def get_teacher_for_class(class_id):
     """Return the teacher user dict for a given class_id, or None."""
-    return next((u for u in USERS.values() if u['role'] == 'teacher' and u.get('class_id') == class_id), None)
+    return next((u for u in USERS.values() if has_role(u, 'teacher') and u.get('class_id') == class_id), None)
 
 def get_students_for_class(class_id):
     """Return all students in a given class_id."""
@@ -762,6 +876,7 @@ _TABLE_SPECS = {
     'region_level_schedules':  (REGION_LEVEL_SCHEDULES, 'dict', None),  # keyed by "region_id:level_id"
     'global_class_times':      (GLOBAL_CLASS_TIMES, 'dict', 'level_id'),
     'region_class_times':      (REGION_CLASS_TIMES, 'dict', None),  # keyed by "region_id:level_id"
+    'settings':                (SETTINGS, 'dict', 'key'),
     'student_progress':        (STUDENT_PROGRESS, 'list', 'id'),
     'homework':                 (HOMEWORK, 'list', 'id'),
 }
@@ -843,6 +958,30 @@ def load_data():
     save_data()  # persist whatever is now in memory (restored data, or fresh seed data on first run)
 
 load_data()
+
+# Every account now carries a list of roles (one login can be parent AND teacher AND admin).
+# 'role' stays as the role the person is currently acting as.
+for _u in USERS.values():
+    _roles = _u.get('roles') or [_u['role']]
+    if _u['role'] not in _roles:
+        _roles.append(_u['role'])
+    _u['roles'] = _roles
+
+def apply_class_schedule_2026_27():
+    """Replace every level's global class times with the 2026-27 Zoom schedule."""
+    for level_id, slots in CLASS_SCHEDULE_2026_27.items():
+        GLOBAL_CLASS_TIMES[level_id] = {"level_id": level_id, "slots": [dict(sl) for sl in slots]}
+
+# One-time migration: a database created before this version still holds the old class
+# times (the DB wins over the defaults in code), so push the new schedule in exactly once.
+# After that, edits made on the Class Times admin page are never overwritten.
+if get_setting('class_times_version') != CLASS_SCHEDULE_VERSION:
+    apply_class_schedule_2026_27()
+    set_setting('class_times_version', CLASS_SCHEDULE_VERSION)
+    logging.info(f"Applied class schedule {CLASS_SCHEDULE_VERSION} to the global class times.")
+    if REGION_CLASS_TIMES:
+        logging.warning(f"{len(REGION_CLASS_TIMES)} regional class-time override(s) exist and were left untouched.")
+save_data()
 
 @app.after_request
 def _persist_after_mutating_request(response):
@@ -1018,6 +1157,7 @@ def _csv_safe(value):
     return "'" + v if v[:1] in ('=', '+', '-', '@', '\t', '\r') else v
 
 ROLE_LABELS = {'admin': 'Super Admin', 'regional_admin': 'Regional Admin', 'teacher': 'Teacher', 'parent': 'Parent'}
+app.jinja_env.globals['ROLE_LABELS'] = ROLE_LABELS
 
 def event_attendees_response(event_id, back_endpoint, view_endpoint):
     """Shared implementation behind the admin / regional-admin / teacher attendee pages."""
@@ -1125,7 +1265,7 @@ def unregister_event(event_id):
 @app.route('/register/student', methods=['GET', 'POST'])
 def register_student():
     u = current_user()
-    is_returning_parent = bool(u and u['role'] == 'parent')
+    is_returning_parent = bool(u and u['role'] in ('parent', 'teacher') and has_role(u, 'parent'))
 
     # For a logged-in parent, pre-fill the Location section from their most
     # recently enrolled child (if any) so they don't have to retype the same
@@ -1173,6 +1313,17 @@ def register_student():
             return render_template('register_student.html', levels=LEVELS, regions=REGIONS, countries=COUNTRIES, user=u, prefill=prefill, is_returning_parent=is_returning_parent)
 
         existing_account = next((x for x in USERS.values() if x['email'].lower() == parent_email), None)
+
+        # SECURITY: this form is public. An existing account may only be used if the visitor
+        # is already logged in AS that account — otherwise typing someone's email (even an
+        # admin's) here would have signed the visitor in as them without a password.
+        if existing_account and not (u and u['id'] == existing_account['id']):
+            session['next_url'] = '/register/student'
+            flash('An account with this email already exists. Please log in first, then add your child from here.', 'error')
+            return redirect(url_for('login'))
+        # A teacher/admin enrolling their own child simply gains the Parent role on the same login.
+        if existing_account and not has_role(existing_account, 'parent'):
+            grant_role(existing_account, 'parent')
 
         # If no account exists yet for this email, a password is required to create one.
         # (A logged-in parent always has existing_account set, so this never applies to them.)
@@ -1239,12 +1390,37 @@ def register_student():
                 # New self-registered accounts require a Super Admin or Regional
                 # Admin (for their region) to approve before they can log in.
                 "account_status": "pending",
+                "roles": ["parent"],
+                "created_at": datetime.now().strftime('%Y-%m-%d'),
             }
+            # How new parent accounts get approved is an admin setting (manual / email link / instant).
+            approval_mode = get_setting('parent_approval', 'manual')
+            if approval_mode == 'auto':
+                parent_user['account_status'] = 'active'
+                session['signup_status'] = 'active'
+            elif approval_mode == 'email_verified' and email_is_configured():
+                parent_user['email_token'] = secrets.token_urlsafe(24)
+                session['signup_status'] = 'verify'
+            else:
+                session['signup_status'] = 'pending'
             USERS[parent_user['id']] = parent_user
             account_created = True
 
         if is_returning_parent:
             flash(f"{student['name']} has been added to your account! 🙏", 'success')
+        elif account_created and parent_user.get('email_token'):
+            flash(f"{student['name']} is enrolled! We've emailed {parent_user['name']} a link — click it to confirm "
+                  f"your email and activate your GJPP account. 🙏", 'success')
+            send_email(parent_user['email'], "Confirm your email to activate your GJPP account",
+                f"Hi {parent_user['name']},\n\nThank you for enrolling {student['name']} in GJPP!\n\n"
+                f"Please confirm your email address to activate your account:\n"
+                f"{request.url_root.rstrip('/')}/verify-email/{parent_user['email_token']}\n\n"
+                f"After that you can log in at {request.url_root.rstrip('/')}/login.")
+        elif account_created and parent_user.get('account_status') == 'active':
+            flash(f"{student['name']} is enrolled! Your GJPP account is ready — you can log in now. 🙏", 'success')
+            send_email(parent_user['email'], "Welcome to GJPP",
+                f"Hi {parent_user['name']},\n\nThank you for enrolling {student['name']} in GJPP!\n"
+                f"Your account is ready — log in at {request.url_root.rstrip('/')}/login.")
         elif account_created:
             flash(f"{student['name']} is enrolled! Your new GJPP account for {parent_user['name']} is "
                   f"awaiting approval from an administrator — you'll get an email as soon as you can log in. 🙏", 'success')
@@ -1253,10 +1429,8 @@ def register_student():
                 f"Your account is currently awaiting approval from an administrator. "
                 f"You'll receive another email as soon as it's approved and you can log in.")
         else:
-            # Existing account, already approved previously — safe to log them straight in.
-            session['user_id'] = parent_user['id']
-            session['user_role'] = parent_user['role']
-            flash(f"Welcome, {student['name']}! Your child has been added to your existing GJPP account. 🙏", 'success')
+            # Existing account — the visitor is already logged in as it (enforced above).
+            flash(f"{student['name']} has been added to your GJPP account. 🙏", 'success')
 
         if assigned_teacher:
             flash(f"{student['name']} has been automatically assigned to teacher {assigned_teacher['name']}.", 'success')
@@ -1313,8 +1487,14 @@ def registration_success(type):
         # A brand-new parent account was created but is awaiting admin approval,
         # so nobody is logged in yet — reflect that accurately on this page.
         title = 'Enrollment Complete!'
-        message = 'Your child has been enrolled. Your new GJPP account is awaiting approval from an administrator — you\'ll get an email as soon as you can log in.'
-    show_dashboard_cta = type == 'student' and u and u['role'] == 'parent'
+        status = session.pop('signup_status', 'pending')
+        if status == 'verify':
+            message = 'Your child has been enrolled. We\'ve emailed you a link — click it to confirm your email and activate your account, then log in.'
+        elif status == 'active':
+            message = 'Your child has been enrolled and your account is ready. You can log in now.'
+        else:
+            message = 'Your child has been enrolled. Your new GJPP account is awaiting approval from an administrator — you\'ll get an email as soon as you can log in.'
+    show_dashboard_cta = type == 'student' and u and has_role(u, 'parent')
     show_verify_cta = show_dashboard_cta and not is_fully_verified(u)
     return render_template('success.html', title=title, message=message, icon=icon, user=u,
         show_dashboard_cta=show_dashboard_cta, show_verify_cta=show_verify_cta)
@@ -1338,8 +1518,11 @@ def login_submit():
                  and check_password_hash(u['password'], password)), None)
     if user:
         if user.get('account_status', 'active') == 'pending':
-            flash('Your account is still awaiting approval from an administrator. '
-                  "You'll receive an email as soon as it's approved.", 'error')
+            if user.get('email_token'):
+                flash('Please confirm your email first — click the link we sent you to activate your account.', 'error')
+            else:
+                flash('Your account is still awaiting approval from an administrator. '
+                      "You'll receive an email as soon as it's approved.", 'error')
             return redirect(url_for('login'))
         session['user_id']   = user['id']
         session['user_role'] = user['role']
@@ -1350,6 +1533,37 @@ def login_submit():
         return redirect(url_for('dashboard'))
     flash('Invalid email or password. Please try again.', 'error')
     return redirect(url_for('login'))
+
+@app.route('/verify-email/<token>')
+def verify_email_link(token):
+    """Public link emailed to new parents: proves they own the address and, when the admin
+    chose 'approve after email confirmation', activates the account — no admin click needed."""
+    target = next((x for x in USERS.values()
+                   if x.get('email_token') and hmac.compare_digest(str(x['email_token']), token)), None)
+    if not target:
+        flash('That confirmation link is invalid or has already been used. Try logging in.', 'error')
+        return redirect(url_for('login'))
+    target['email_verified'] = True
+    target['email_token'] = None
+    if target.get('account_status') == 'pending' and get_setting('parent_approval', 'manual') in ('email_verified', 'auto'):
+        target['account_status'] = 'active'
+        flash('Email confirmed — your account is active. You can log in now. 🙏', 'success')
+    else:
+        flash('Email confirmed. Your account is waiting for an administrator to approve it.', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/switch-role/<role>', methods=['POST'])
+@login_required
+def switch_role(role):
+    """One login, several roles: pick which one you're acting as right now."""
+    u = current_user()
+    if role not in user_roles(u):
+        flash('You do not have that role.', 'error')
+        return redirect(url_for('dashboard'))
+    u['role'] = role
+    session['user_role'] = role
+    flash(f"You're now using GJPP as {ROLE_LABELS.get(role, role)}.", 'success')
+    return redirect(url_for('dashboard'))
 
 @app.route('/logout')
 def logout():
@@ -1388,7 +1602,7 @@ def profile():
         u['email'] = new_email
 
         # If this parent's login email changes, keep their children's records pointing to the right account
-        if u['role'] == 'parent' and email_changed:
+        if has_role(u, 'parent') and email_changed:
             for s in STUDENTS:
                 if s.get('parent1_email', '').lower() == old_email.lower():
                     s['parent1_email'] = new_email
@@ -1519,8 +1733,8 @@ def admin_dashboard():
         volunteers=VOLUNTEERS,
         pending_requests=pending_requests,
         total_students=len(STUDENTS),
-        total_teachers=sum(1 for u in USERS.values() if u['role']=='teacher'),
-        total_parents=sum(1 for u in USERS.values() if u['role']=='parent'),
+        total_teachers=sum(1 for u in USERS.values() if has_role(u, 'teacher')),
+        total_parents=sum(1 for u in USERS.values() if has_role(u, 'parent')),
         total_volunteers=len(VOLUNTEERS),
     )
 
@@ -1533,18 +1747,20 @@ def admin_students():
     q_country = request.args.get('country', '').lower()
     q_city    = request.args.get('city', '').lower()
     q_parent  = request.args.get('parent', '').lower()
+    q_level   = request.args.get('level', '')
 
     filtered = STUDENTS
     if q_name:    filtered = [s for s in filtered if q_name    in s['name'].lower()]
+    if q_level:   filtered = [s for s in filtered if s.get('level', '') == q_level]
     if q_region:  filtered = [s for s in filtered if s.get('region','') == q_region]
     if q_country: filtered = [s for s in filtered if q_country in s.get('country','').lower()]
     if q_city:    filtered = [s for s in filtered if q_city    in s.get('city','').lower()]
     if q_parent:  filtered = [s for s in filtered if q_parent  in s.get('parent1_name','').lower()]
 
     return render_template('admin/students.html',
-        user=current_user(), students=filtered, regions=REGIONS,
+        user=current_user(), students=filtered, regions=REGIONS, levels=LEVELS,
         q_name=q_name, q_region=q_region, q_country=q_country,
-        q_city=q_city, q_parent=q_parent,
+        q_city=q_city, q_parent=q_parent, q_level=q_level,
     )
 
 @app.route('/admin/events')
@@ -1652,6 +1868,58 @@ def reject_location_request(req_id):
         flash('Location request rejected.', 'success')
     return redirect(url_for('admin_location_requests'))
 
+def _pending_accounts_view(scope):
+    """Shared by the Super Admin (all regions) and Regional Admin (own region) pending pages."""
+    u = current_user()
+    q = request.args.get('q', '').strip().lower()
+    region_filter = request.args.get('region', '').strip() if scope == 'all' else u['region']
+    pending = [x for x in USERS.values() if x.get('account_status') == 'pending']
+    if region_filter:
+        pending = [x for x in pending if x.get('region') == region_filter]
+    if q:
+        pending = [x for x in pending if q in x['name'].lower() or q in x['email'].lower()]
+    pending.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    children_by_email = {}
+    for st in STUDENTS:
+        e = st.get('parent1_email', '').lower()
+        children_by_email[e] = children_by_email.get(e, 0) + 1
+    child_counts = {x['id']: children_by_email.get(x['email'].lower(), 0) for x in pending}
+    return render_template('admin/pending_accounts.html',
+        user=u, pending=pending, child_counts=child_counts, scope=scope,
+        regions=REGIONS, q=q, region_filter=region_filter,
+        approval_mode=get_setting('parent_approval', 'manual'), approval_modes=APPROVAL_MODES,
+        email_ready=email_is_configured())
+
+def _approval_email(target):
+    return (target['email'], "Your GJPP account has been approved",
+            f"Hi {target['name']},\n\nGreat news — your GJPP account has been approved! "
+            f"You can now log in at {request.url_root.rstrip('/')}/login.")
+
+def _bulk_approve(allowed):
+    """Approve many pending accounts at once. `allowed(account)` decides which ones the
+    current admin may touch (never trust the posted ids). Emails go out in the background."""
+    wanted = set(request.form.getlist('uids'))
+    if request.form.get('action') == 'approve_all':
+        # "Approve everything that matches the filters currently on screen"
+        q = request.form.get('q', '').strip().lower()
+        rf = request.form.get('region', '').strip()
+        wanted = {x['id'] for x in USERS.values()
+                  if x.get('account_status') == 'pending'
+                  and (not rf or x.get('region') == rf)
+                  and (not q or q in x['name'].lower() or q in x['email'].lower())}
+    mails, count = [], 0
+    for uid in wanted:
+        target = USERS.get(uid)
+        if target and target.get('account_status') == 'pending' and allowed(target):
+            target['account_status'] = 'active'
+            mails.append(_approval_email(target))
+            count += 1
+    send_emails_async(mails)
+    if count:
+        flash(f"{count} account{'s' if count != 1 else ''} approved. 🎉", 'success')
+    else:
+        flash('No accounts were selected.', 'error')
+
 # ─────────────────────────────────────────
 #  PENDING ACCOUNT APPROVAL (self-registered parent logins)
 # ─────────────────────────────────────────
@@ -1659,12 +1927,29 @@ def reject_location_request(req_id):
 @login_required
 @role_required('admin')
 def admin_pending_accounts():
-    pending = [u for u in USERS.values() if u.get('account_status') == 'pending']
-    pending.sort(key=lambda u: u.get('created_at', ''), reverse=True)
-    child_counts = {u['id']: len([s for s in STUDENTS if s.get('parent1_email','').lower() == u['email'].lower()])
-                    for u in pending}
-    return render_template('admin/pending_accounts.html',
-        user=current_user(), pending=pending, child_counts=child_counts, scope='all')
+    return _pending_accounts_view('all')
+
+@app.route('/admin/pending-accounts/bulk', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_pending_accounts_bulk():
+    _bulk_approve(lambda target: True)
+    return redirect(url_for('admin_pending_accounts', q=request.form.get('q', ''), region=request.form.get('region', '')))
+
+@app.route('/admin/settings/parent-approval', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_set_parent_approval():
+    mode = request.form.get('mode', '')
+    if mode not in APPROVAL_MODES:
+        abort(400)
+    if mode == 'email_verified' and not email_is_configured():
+        flash("Email isn't set up on the server yet (MAIL_SERVER / MAIL_USERNAME / MAIL_PASSWORD), so confirmation "
+              "links can't be sent. Add those variables first, then switch this on.", 'error')
+        return redirect(url_for('admin_pending_accounts'))
+    set_setting('parent_approval', mode)
+    flash(f"New parent accounts: {APPROVAL_MODES[mode]}.", 'success')
+    return redirect(url_for('admin_pending_accounts'))
 
 @app.route('/admin/pending-accounts/<uid>/approve', methods=['POST'])
 @login_required
@@ -1674,10 +1959,8 @@ def admin_pending_account_approve(uid):
     if target and target.get('account_status') == 'pending':
         target['account_status'] = 'active'
         flash(f"{target['name']}'s account has been approved.", 'success')
-        send_email(target['email'], "Your GJPP account has been approved",
-            f"Hi {target['name']},\n\nGreat news — your GJPP account has been approved! "
-            f"You can now log in at {request.url_root.rstrip('/')}/login.")
-    return redirect(url_for('admin_pending_accounts'))
+        send_emails_async([_approval_email(target)])
+    return redirect(url_for('admin_pending_accounts', q=request.args.get('q', ''), region=request.args.get('region', '')))
 
 @app.route('/admin/pending-accounts/<uid>/reject', methods=['POST'])
 @login_required
@@ -1694,13 +1977,15 @@ def admin_pending_account_reject(uid):
 @login_required
 @role_required('regional_admin')
 def radmin_pending_accounts():
-    u = current_user()
-    pending = [x for x in USERS.values() if x.get('account_status') == 'pending' and x.get('region') == u['region']]
-    pending.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-    child_counts = {x['id']: len([s for s in STUDENTS if s.get('parent1_email','').lower() == x['email'].lower()])
-                    for x in pending}
-    return render_template('admin/pending_accounts.html',
-        user=u, pending=pending, child_counts=child_counts, scope='region')
+    return _pending_accounts_view('region')
+
+@app.route('/radmin/pending-accounts/bulk', methods=['POST'])
+@login_required
+@role_required('regional_admin')
+def radmin_pending_accounts_bulk():
+    region = current_user()['region']
+    _bulk_approve(lambda target: target.get('region') == region)
+    return redirect(url_for('radmin_pending_accounts', q=request.form.get('q', '')))
 
 @app.route('/radmin/pending-accounts/<uid>/approve', methods=['POST'])
 @login_required
@@ -1712,9 +1997,7 @@ def radmin_pending_account_approve(uid):
     if target and target.get('account_status') == 'pending' and target.get('region') == u['region']:
         target['account_status'] = 'active'
         flash(f"{target['name']}'s account has been approved.", 'success')
-        send_email(target['email'], "Your GJPP account has been approved",
-            f"Hi {target['name']},\n\nGreat news — your GJPP account has been approved! "
-            f"You can now log in at {request.url_root.rstrip('/')}/login.")
+        send_emails_async([_approval_email(target)])
     return redirect(url_for('radmin_pending_accounts'))
 
 @app.route('/radmin/pending-accounts/<uid>/reject', methods=['POST'])
@@ -1853,7 +2136,7 @@ def request_location_update():
 @login_required
 @role_required('admin')
 def admin_teachers():
-    teachers = [u for u in USERS.values() if u['role'] == 'teacher']
+    teachers = [u for u in USERS.values() if has_role(u, 'teacher')]
     q_name    = request.args.get('name', '').lower()
     q_region  = request.args.get('region', '')
     q_country = request.args.get('country', '').lower()
@@ -1874,12 +2157,31 @@ def admin_teachers():
 def admin_teacher_new():
     if request.method == 'POST':
         email = request.form.get('email','').strip().lower()
-        if any(u['email'].lower() == email for u in USERS.values()):
-            flash('A user with that email already exists.', 'error')
+        existing = find_user_by_email(email)
+        if existing:
+            # Same person, same login: just add the Teacher role to the account they already have.
+            if has_role(existing, 'teacher'):
+                flash(f"{existing['name']} is already a teacher.", 'error')
+                return redirect(url_for('admin_teacher_new'))
+            grant_role(existing, 'teacher')
+            existing['class_id'] = request.form.get('class_id') or existing.get('class_id')
+            if request.form.get('phone') and not existing.get('phone'):
+                existing['phone'] = request.form.get('phone')
+            msg = f"{existing['name']} already had an account — Teacher role added to it (same email and password). 🎓"
+            if request.form.get('region') and request.form.get('region') != existing.get('region'):
+                msg += f" Note: the account's region stays {region_label(existing.get('region'))}."
+            flash(msg, 'success')
+            send_email(email, "You're now a GJPP teacher",
+                f"Hi {existing['name']},\n\nThe Teacher role has been added to your existing GJPP account.\n"
+                f"Log in with your usual email and password at {request.url_root.rstrip('/')}/login and "
+                f"use the role switcher to move between roles.")
+            return redirect(url_for('admin_teachers'))
+        if not request.form.get('password', '').strip():
+            flash('Please set a password for this new account (or use an email that already has an account).', 'error')
             return redirect(url_for('admin_teacher_new'))
         uid = f"u-teacher-{str(uuid.uuid4())[:8]}"
         USERS[uid] = {
-            "id": uid, "role": "teacher",
+            "id": uid, "role": "teacher", "roles": ["teacher"],
             "email": email,
             "password": generate_password_hash(request.form.get('password', 'teacher123')),
             "name": request.form.get('name'),
@@ -1905,12 +2207,12 @@ def admin_teacher_new():
 @role_required('admin')
 def admin_teacher_edit(uid):
     teacher = USERS.get(uid)
-    if not teacher or teacher['role'] != 'teacher':
+    if not teacher or not has_role(teacher, 'teacher'):
         flash('Teacher not found.', 'error')
         return redirect(url_for('admin_teachers'))
     if request.method == 'POST':
         teacher['name']     = request.form.get('name')
-        teacher['email']    = request.form.get('email','').strip().lower()
+        change_user_email(teacher, request.form.get('email','').strip().lower())
         teacher['region']   = request.form.get('region')
         teacher['country']  = request.form.get('country')
         teacher['city']     = request.form.get('city')
@@ -1928,10 +2230,12 @@ def admin_teacher_edit(uid):
 @role_required('admin')
 def admin_teacher_delete(uid):
     teacher = USERS.get(uid)
-    if teacher and teacher['role'] == 'teacher':
+    if teacher and has_role(teacher, 'teacher'):
         name = teacher['name']
-        del USERS[uid]
-        flash(f"Teacher '{name}' removed from the system.", 'success')
+        if revoke_role(uid, 'teacher') == 'removed_role':
+            flash(f"{name} is no longer a teacher (their other roles and login were kept).", 'success')
+        else:
+            flash(f"Teacher '{name}' removed from the system.", 'success')
     return redirect(url_for('admin_teachers'))
 
 # ─────────────────────────────────────────
@@ -1941,7 +2245,7 @@ def admin_teacher_delete(uid):
 @login_required
 @role_required('admin')
 def admin_parents():
-    parents = [u for u in USERS.values() if u['role'] == 'parent']
+    parents = [u for u in USERS.values() if has_role(u, 'parent')]
     q_name  = request.args.get('name', '').lower()
     q_email = request.args.get('email', '').lower()
     if q_name:  parents = [p for p in parents if q_name in p['name'].lower()]
@@ -1960,16 +2264,21 @@ def admin_parents():
 def admin_parent_new():
     if request.method == 'POST':
         email = request.form.get('email','').strip().lower()
-        if any(u['email'].lower() == email for u in USERS.values()):
-            flash('A user with that email already exists.', 'error')
-            return redirect(url_for('admin_parent_new'))
+        existing = find_user_by_email(email)
+        if existing:
+            if has_role(existing, 'parent'):
+                flash(f"{existing['name']} already has a parent account.", 'error')
+                return redirect(url_for('admin_parent_new'))
+            grant_role(existing, 'parent')
+            flash(f"{existing['name']} already had an account — Parent role added to it (same email and password). 👨‍👩‍👦", 'success')
+            return redirect(url_for('admin_parents'))
         password = request.form.get('password','').strip()
         if not password:
             password = uuid.uuid4().hex[:10]  # admin didn't set one — generate a temporary one
         uid = f"u-parent-{str(uuid.uuid4())[:8]}"
         name = request.form.get('name')
         USERS[uid] = {
-            "id": uid, "role": "parent",
+            "id": uid, "role": "parent", "roles": ["parent"],
             "email": email,
             "password": generate_password_hash(password),
             "name": name,
@@ -1996,7 +2305,7 @@ def admin_parent_new():
 @role_required('admin')
 def admin_parent_edit(uid):
     parent = USERS.get(uid)
-    if not parent or parent['role'] != 'parent':
+    if not parent or not has_role(parent, 'parent'):
         flash('Parent not found.', 'error')
         return redirect(url_for('admin_parents'))
     if request.method == 'POST':
@@ -2025,10 +2334,12 @@ def admin_parent_edit(uid):
 @role_required('admin')
 def admin_parent_delete(uid):
     parent = USERS.get(uid)
-    if parent and parent['role'] == 'parent':
+    if parent and has_role(parent, 'parent'):
         name = parent['name']
-        del USERS[uid]
-        flash(f"Parent account '{name}' removed. Their children's records were kept — only the login was deleted.", 'success')
+        if revoke_role(uid, 'parent') == 'removed_role':
+            flash(f"{name} no longer has the Parent role (their other roles and login were kept). Their children's records were kept.", 'success')
+        else:
+            flash(f"Parent account '{name}' removed. Their children's records were kept — only the login was deleted.", 'success')
     return redirect(url_for('admin_parents'))
 
 # ─────────────────────────────────────────
@@ -2038,7 +2349,7 @@ def admin_parent_delete(uid):
 @login_required
 @role_required('admin')
 def admin_regional_admins():
-    radmins = [u for u in USERS.values() if u['role'] == 'regional_admin']
+    radmins = [u for u in USERS.values() if has_role(u, 'regional_admin')]
     return render_template('admin/regional_admins.html',
         user=current_user(), radmins=radmins, regions=REGIONS)
 
@@ -2048,9 +2359,18 @@ def admin_regional_admins():
 def admin_regional_admin_new():
     if request.method == 'POST':
         email = request.form.get('email','').strip().lower()
-        if any(u['email'].lower() == email for u in USERS.values()):
-            flash('A user with that email already exists.', 'error')
-            return redirect(url_for('admin_regional_admin_new'))
+        existing = find_user_by_email(email)
+        if existing:
+            if has_role(existing, 'regional_admin'):
+                flash(f"{existing['name']} is already a Regional Admin.", 'error')
+                return redirect(url_for('admin_regional_admin_new'))
+            grant_role(existing, 'regional_admin')
+            new_region = request.form.get('region')
+            if new_region:
+                existing['region'] = new_region   # a Regional Admin's scope comes from the account's region
+            flash(f"{existing['name']} already had an account — Regional Admin role added for "
+                  f"{region_label(existing.get('region'))} (same email and password). 🛡️", 'success')
+            return redirect(url_for('admin_regional_admins'))
         password = request.form.get('password','').strip()
         if not password:
             flash('Please set a password for this account.', 'error')
@@ -2058,7 +2378,7 @@ def admin_regional_admin_new():
         uid = f"u-radmin-{str(uuid.uuid4())[:8]}"
         name = request.form.get('name')
         USERS[uid] = {
-            "id": uid, "role": "regional_admin",
+            "id": uid, "role": "regional_admin", "roles": ["regional_admin"],
             "email": email,
             "password": generate_password_hash(password),
             "name": name,
@@ -2084,12 +2404,12 @@ def admin_regional_admin_new():
 @role_required('admin')
 def admin_regional_admin_edit(uid):
     radmin = USERS.get(uid)
-    if not radmin or radmin['role'] != 'regional_admin':
+    if not radmin or not has_role(radmin, 'regional_admin'):
         flash('Regional Admin not found.', 'error')
         return redirect(url_for('admin_regional_admins'))
     if request.method == 'POST':
         radmin['name']    = request.form.get('name')
-        radmin['email']   = request.form.get('email','').strip().lower()
+        change_user_email(radmin, request.form.get('email','').strip().lower())
         radmin['region']  = request.form.get('region')
         radmin['country'] = request.form.get('country')
         radmin['city']    = request.form.get('city')
@@ -2106,10 +2426,12 @@ def admin_regional_admin_edit(uid):
 @role_required('admin')
 def admin_regional_admin_delete(uid):
     radmin = USERS.get(uid)
-    if radmin and radmin['role'] == 'regional_admin':
+    if radmin and has_role(radmin, 'regional_admin'):
         name = radmin['name']
-        del USERS[uid]
-        flash(f"Regional Admin '{name}' removed from the system.", 'success')
+        if revoke_role(uid, 'regional_admin') == 'removed_role':
+            flash(f"{name} is no longer a Regional Admin (their other roles and login were kept).", 'success')
+        else:
+            flash(f"Regional Admin '{name}' removed from the system.", 'success')
     return redirect(url_for('admin_regional_admins'))
 
 # ─────────────────────────────────────────
@@ -2119,7 +2441,7 @@ def admin_regional_admin_delete(uid):
 @login_required
 @role_required('admin')
 def admin_admins():
-    admins = [u for u in USERS.values() if u['role'] == 'admin']
+    admins = [u for u in USERS.values() if has_role(u, 'admin')]
     return render_template('admin/admins.html', user=current_user(), admins=admins)
 
 @app.route('/admin/admins/new', methods=['GET','POST'])
@@ -2128,9 +2450,14 @@ def admin_admins():
 def admin_admin_new():
     if request.method == 'POST':
         email = request.form.get('email','').strip().lower()
-        if any(u['email'].lower() == email for u in USERS.values()):
-            flash('A user with that email already exists.', 'error')
-            return redirect(url_for('admin_admin_new'))
+        existing = find_user_by_email(email)
+        if existing:
+            if has_role(existing, 'admin'):
+                flash(f"{existing['name']} is already a Super Admin.", 'error')
+                return redirect(url_for('admin_admin_new'))
+            grant_role(existing, 'admin')
+            flash(f"{existing['name']} already had an account — Super Admin role added to it (same email and password). 👑", 'success')
+            return redirect(url_for('admin_admins'))
         password = request.form.get('password','').strip()
         if not password:
             flash('Please set a password for this account.', 'error')
@@ -2138,7 +2465,7 @@ def admin_admin_new():
         uid = f"u-admin-{str(uuid.uuid4())[:8]}"
         name = request.form.get('name')
         USERS[uid] = {
-            "id": uid, "role": "admin",
+            "id": uid, "role": "admin", "roles": ["admin"],
             "email": email,
             "password": generate_password_hash(password),
             "name": name,
@@ -2164,12 +2491,12 @@ def admin_admin_new():
 @role_required('admin')
 def admin_admin_edit(uid):
     admin_acct = USERS.get(uid)
-    if not admin_acct or admin_acct['role'] != 'admin':
+    if not admin_acct or not has_role(admin_acct, 'admin'):
         flash('Admin not found.', 'error')
         return redirect(url_for('admin_admins'))
     if request.method == 'POST':
         admin_acct['name']    = request.form.get('name')
-        admin_acct['email']   = request.form.get('email','').strip().lower()
+        change_user_email(admin_acct, request.form.get('email','').strip().lower())
         admin_acct['phone']   = request.form.get('phone','')
         if request.form.get('password'):
             admin_acct['password'] = generate_password_hash(request.form.get('password'))
@@ -2184,18 +2511,20 @@ def admin_admin_edit(uid):
 def admin_admin_delete(uid):
     u = current_user()
     target = USERS.get(uid)
-    if not target or target['role'] != 'admin':
+    if not target or not has_role(target, 'admin'):
         return redirect(url_for('admin_admins'))
     if uid == u['id']:
         flash('You cannot remove your own Super Admin account while logged in as it.', 'error')
         return redirect(url_for('admin_admins'))
-    remaining_admins = [x for x in USERS.values() if x['role'] == 'admin']
+    remaining_admins = [x for x in USERS.values() if has_role(x, 'admin')]
     if len(remaining_admins) <= 1:
         flash('Cannot remove the last remaining Super Admin account.', 'error')
         return redirect(url_for('admin_admins'))
     name = target['name']
-    del USERS[uid]
-    flash(f"Super Admin '{name}' removed from the system.", 'success')
+    if revoke_role(uid, 'admin') == 'removed_role':
+        flash(f"{name} is no longer a Super Admin (their other roles and login were kept).", 'success')
+    else:
+        flash(f"Super Admin '{name}' removed from the system.", 'success')
     return redirect(url_for('admin_admins'))
 
 # ─────────────────────────────────────────
@@ -2303,13 +2632,15 @@ def admin_student_new():
         # Auto-create (or link to) a parent login, same as public self-enrollment does —
         # otherwise a student added here would have a parent with no way to sign in.
         existing_account = next((u for u in USERS.values() if u['email'].lower() == parent_email), None)
+        if existing_account and not has_role(existing_account, 'parent'):
+            grant_role(existing_account, 'parent')   # e.g. a teacher enrolling their own child
         account_created = False
         generated_password = None
         if parent_email and not existing_account:
             generated_password = uuid.uuid4().hex[:10]
             parent_uid = f"u-parent-{str(uuid.uuid4())[:8]}"
             USERS[parent_uid] = {
-                "id": parent_uid, "role": "parent",
+                "id": parent_uid, "role": "parent", "roles": ["parent"],
                 "email": parent_email,
                 "password": generate_password_hash(generated_password),
                 "name": request.form.get('parent1_name'),
@@ -2413,7 +2744,7 @@ def regional_admin_dashboard():
     my_region = u['region']
     region_obj = next((r for r in REGIONS if r['id'] == my_region), None)
     region_students  = [s for s in STUDENTS if s.get('region') == my_region]
-    region_teachers  = [t for t in USERS.values() if t['role'] == 'teacher' and t.get('region') == my_region]
+    region_teachers  = [t for t in USERS.values() if has_role(t, 'teacher') and t.get('region') == my_region]
     region_volunteers= [v for v in VOLUNTEERS if v.get('region') == my_region]
     region_events    = [e for e in EVENTS if e['region'] in ('global', my_region)]
     region_materials = [m for m in STUDY_MATERIALS if m['region'] in ('global', my_region)]
@@ -2434,17 +2765,20 @@ def radmin_students():
     students = [s for s in STUDENTS if s.get('region') == u['region']]
     q_name = request.args.get('name','').lower()
     q_city = request.args.get('city','').lower()
+    q_level = request.args.get('level','')
     if q_name: students = [s for s in students if q_name in s['name'].lower()]
     if q_city: students = [s for s in students if q_city in s.get('city','').lower()]
+    if q_level: students = [s for s in students if s.get('level','') == q_level]
     region = next((r for r in REGIONS if r['id'] == u['region']), None)
-    return render_template('radmin/students.html', user=u, students=students, region=region, q_name=q_name, q_city=q_city)
+    return render_template('radmin/students.html', user=u, students=students, region=region, levels=LEVELS,
+                           q_name=q_name, q_city=q_city, q_level=q_level)
 
 @app.route('/radmin/teachers')
 @login_required
 @role_required('regional_admin')
 def radmin_teachers():
     u = current_user()
-    teachers = [t for t in USERS.values() if t['role'] == 'teacher' and t.get('region') == u['region']]
+    teachers = [t for t in USERS.values() if has_role(t, 'teacher') and t.get('region') == u['region']]
     region = next((r for r in REGIONS if r['id'] == u['region']), None)
     return render_template('radmin/teachers.html', user=u, teachers=teachers, region=region, students=STUDENTS)
 
@@ -3394,7 +3728,7 @@ def teacher_classes():
     # Map class_id -> teacher
     class_teachers = {}
     for uid, usr in USERS.items():
-        if usr['role'] == 'teacher' and usr.get('class_id'):
+        if has_role(usr, 'teacher') and usr.get('class_id'):
             class_teachers[usr['class_id']] = usr
     my_region = next((r for r in REGIONS if r['id'] == u.get('region')), None)
     return render_template('teacher/classes.html',
@@ -3430,7 +3764,7 @@ def parent_children():
 def parent_teachers():
     u = current_user()
     # Teachers in parent's region
-    region_teachers = [t for t in USERS.values() if t['role']=='teacher' and t.get('region')==u.get('region')]
+    region_teachers = [t for t in USERS.values() if has_role(t, 'teacher') and t.get('region')==u.get('region')]
     # For each teacher, get their students
     teacher_info = []
     for t in region_teachers:
@@ -3446,7 +3780,7 @@ def parent_teachers():
             'student_count': len(t_students),
         })
     # Also get teachers from other regions (global view)
-    all_teachers = [t for t in USERS.values() if t['role']=='teacher']
+    all_teachers = [t for t in USERS.values() if has_role(t, 'teacher')]
     all_teacher_info = []
     for t in all_teachers:
         t_students = [s for s in STUDENTS if s.get('class_id') == t.get('class_id')]

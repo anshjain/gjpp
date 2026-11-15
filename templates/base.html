@@ -178,6 +178,10 @@
             border-bottom:1px solid rgba(255,255,255,0.1);
             flex-shrink:0;
         }
+        .sb-switch { display:flex; flex-wrap:wrap; gap:0.3rem; margin:0.5rem 0 0.15rem; }
+        .sb-switch button { background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.28); border-radius:100px; padding:0.18rem 0.6rem; font-size:0.66rem; font-weight:800; cursor:pointer; font-family:inherit; }
+        .sb-switch button:hover { background:rgba(255,255,255,0.28); }
+        .sb-switch-label { font-size:0.58rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.45); margin-top:0.55rem; }
         .sb-role { font-size:0.6rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.38); margin-bottom:0.2rem; }
         .sb-name { font-weight:800; color:#fff; font-size:0.875rem; line-height:1.2; }
         .sb-loc  { font-size:0.68rem; color:rgba(255,255,255,0.48); margin-top:0.12rem; }
@@ -537,6 +541,14 @@
         </div>
       </div>
       <div class="sb-loc">{{ region_label(u.region) }} · {{ u.city }}{% if u.country %}, {{ u.country }}{% endif %}</div>
+      {% if user_roles(u)|length > 1 %}
+      <div class="sb-switch-label">Switch role</div>
+      <div class="sb-switch">
+        {% for r in user_roles(u) if r != u.role %}
+        <form method="POST" action="/switch-role/{{ r }}" style="display:inline;"><button type="submit">{{ ROLE_LABELS.get(r, r) }}</button></form>
+        {% endfor %}
+      </div>
+      {% endif %}
 
       {% if u.role == 'admin' %}
       <div class="sb-region-switch">

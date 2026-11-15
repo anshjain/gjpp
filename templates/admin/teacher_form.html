@@ -32,6 +32,8 @@
               <input type="tel" name="phone" class="form-input" placeholder="+1 555 000 0000" value="{{ teacher.phone if teacher else '' }}">
             </div>
           </div>
+          {% if action=='new' %}<div style="background:var(--blue-light);border-radius:9px;padding:0.7rem 0.9rem;font-size:0.78rem;color:var(--text-mid);line-height:1.5;margin-bottom:1rem;">💡 <strong>One login, many roles:</strong> if this email already has a GJPP account (for example as a parent), this role is simply <em>added to that same account</em> — same email, same password. Leave the password blank in that case.</div>
+          {% endif %}
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">Email Address <span>*</span></label>
@@ -39,7 +41,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Password <span>*</span></label>
-              <input type="text" name="password" class="form-input" placeholder="{{ 'Leave blank to keep unchanged' if action=='edit' else 'Set login password' }}" {{ 'required' if action=='new' }}>
+              <input type="text" name="password" class="form-input" placeholder="{{ 'Leave blank to keep unchanged' if action=='edit' else 'New accounts only — blank if the email already has an account' }}">
             </div>
           </div>
 

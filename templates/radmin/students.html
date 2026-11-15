@@ -12,6 +12,11 @@
   <form method="GET" style="display:flex;gap:0.75rem;margin-bottom:1.5rem;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.1rem 1.25rem;">
     <div style="flex:1;"><div style="font-size:0.72rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.3rem;">Name</div><input type="text" name="name" value="{{ q_name }}" placeholder="Search name…" class="form-input" style="height:36px;padding:0.35rem 0.75rem;"></div>
     <div style="flex:1;"><div style="font-size:0.72rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.3rem;">City</div><input type="text" name="city" value="{{ q_city }}" placeholder="City…" class="form-input" style="height:36px;padding:0.35rem 0.75rem;"></div>
+    <div style="flex:1;"><div style="font-size:0.72rem;font-weight:800;color:var(--jain-blue);margin-bottom:0.3rem;">Level</div>
+      <select name="level" class="form-select" style="height:36px;padding:0.35rem 0.75rem;">
+        <option value="">All</option>
+        {% for lv in levels %}<option value="{{ lv.id }}" {% if lv.id==q_level %}selected{% endif %}>{{ lv.name }}</option>{% endfor %}
+      </select></div>
     <div style="align-self:flex-end;display:flex;gap:0.5rem;"><button type="submit" class="btn btn-blue" style="height:36px;padding:0.35rem 0.9rem;">Filter</button><a href="/radmin/students" class="btn btn-outline-blue" style="height:36px;padding:0.35rem 0.75rem;">✕</a></div>
   </form>
   <div class="sc">
@@ -20,7 +25,7 @@
       <thead><tr><th>Student</th><th>Age</th><th>Level</th><th>City</th><th>Parent</th><th>WhatsApp</th><th>Enrolled</th></tr></thead>
       <tbody>
         {% for s in students %}
-        <tr><td><div style="display:flex;align-items:center;"><div class="av">{{ s.name[0] }}</div><strong>{{ s.name }}</strong></div></td><td>{{ s.age }}</td><td><span class="tag tag-blue">{{ s.level }}</span></td><td>{{ s.city }}</td><td>{{ s.parent1_name }}</td><td style="font-size:0.78rem;color:var(--text-muted);">{{ s.parent1_whatsapp }}</td><td style="font-size:0.78rem;color:var(--text-muted);">{{ s.registered_at }}</td></tr>
+        <tr><td><div style="display:flex;align-items:center;"><div class="av">{{ s.name[0] }}</div><strong>{{ s.name }}</strong></div></td><td>{{ s.age }}</td><td><span class="tag tag-blue">{{ level_name(s.level) }}</span></td><td>{{ s.city }}</td><td>{{ s.parent1_name }}</td><td style="font-size:0.78rem;color:var(--text-muted);">{{ s.parent1_whatsapp }}</td><td style="font-size:0.78rem;color:var(--text-muted);">{{ s.registered_at }}</td></tr>
         {% else %}
         <tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--text-muted);">No students found.</td></tr>
         {% endfor %}

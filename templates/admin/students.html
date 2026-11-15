@@ -17,7 +17,7 @@
 .tag{display:inline-flex;padding:0.14rem 0.5rem;border-radius:100px;font-size:0.64rem;font-weight:800;}
 .tag-blue{background:var(--blue-light);color:var(--jain-blue);}
 @media(min-width:640px){.filter-grid{grid-template-columns:repeat(3,1fr);}}
-@media(min-width:900px){.filter-grid{grid-template-columns:repeat(5,1fr) auto;} .filter-actions{margin-top:0;align-self:flex-end;}}
+@media(min-width:900px){.filter-grid{grid-template-columns:repeat(6,1fr) auto;} .filter-actions{margin-top:0;align-self:flex-end;}}
 </style>
 {% endblock %}
 {% block content %}
@@ -38,6 +38,12 @@
           <select name="region" class="form-select" style="height:36px;padding:0.3rem 0.5rem;font-size:0.82rem;">
             <option value="">All</option>
             {% for r in regions %}<option value="{{ r.id }}" {% if r.id==q_region %}selected{% endif %}>{{ r.flag }} {{ r.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><div class="filter-label">Level</div>
+          <select name="level" class="form-select" style="height:36px;padding:0.3rem 0.5rem;font-size:0.82rem;">
+            <option value="">All</option>
+            {% for lv in levels %}<option value="{{ lv.id }}" {% if lv.id==q_level %}selected{% endif %}>{{ lv.name }}</option>{% endfor %}
           </select>
         </div>
         <div><div class="filter-label">Country</div><input type="text" name="country" value="{{ q_country }}" placeholder="Country…" class="form-input" style="height:36px;padding:0.3rem 0.65rem;font-size:0.82rem;"></div>
@@ -65,7 +71,7 @@
         <tr>
           <td><div style="display:flex;align-items:center;"><div class="av">{{ s.name[0] }}</div><div><strong style="font-size:0.85rem;">{{ s.name }}</strong><div style="font-size:0.68rem;color:var(--text-muted);">{{ s.gender }}</div></div></div></td>
           <td>{{ s.age }}</td>
-          <td><span class="tag tag-blue">{{ s.level }}</span></td>
+          <td><span class="tag tag-blue">{{ level_name(s.level) }}</span></td>
           <td style="white-space:nowrap;font-size:0.8rem;">{{ region_label(s.region) }}</td>
           <td style="font-size:0.8rem;">{{ s.city }}</td>
           <td style="font-size:0.8rem;"><strong>{{ s.parent1_name }}</strong><div style="font-size:0.68rem;color:var(--text-muted);">{{ s.parent1_email }}</div></td>
